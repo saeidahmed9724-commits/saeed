@@ -1,7 +1,6 @@
 import express from 'express';
-import path from 'path';
-import fs from 'fs';
-import { createServer as createViteServer } from 'vite';
+import { Redis } from '@upstash/redis';
+import { put } from '@vercel/blob';
 import {
   defaultSaeedProfile,
   defaultSohilaProfile,
@@ -12,22 +11,19 @@ import {
   defaultMemories,
   defaultVideos,
   defaultSongs
-} from './src/dataStore';
-import { getDefaultDailyQuestions } from './src/defaultQuestions';
-import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseMap } from './src/types';
+} from '../src/dataStore';
+import { getDefaultDailyQuestions } from '../src/defaultQuestions';
+import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseMap } from '../src/types';
 
 const app = express();
-const PORT = 3000;
 
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-// Uploads static directory
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
-app.use('/uploads', express.static(UPLOADS_DIR));
+// Redis client - reads UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
+// automatically from environment variables once the integration is connected in Vercel.
+const redis = Redis.fromEnv();
+const STATE_KEY = 'interaction_state';
 
 // Persistent state structure
 interface Buzz {
@@ -123,72 +119,73 @@ interface InteractionState {
   dateActivities?: DateActivity[];
 }
 
-const DEFAULT_STATE: InteractionState = {
-  dodoMood: 'سعيد 🌸',
-  soMood: 'مشتاقة 💕',
-  dodoLastUpdated: new Date().toISOString(),
-  soLastUpdated: new Date().toISOString(),
-  dodoLastActive: new Date().toISOString(),
-  soLastActive: new Date().toISOString(),
-  pendingBuzzes: [],
-  stickyNotes: [
-    {
-      id: 'note-1',
-      sender: 'Dodo',
-      text: 'مرحباً بكِ في قبو حبنا التفاعلي يا سو! ♾️❤️',
-      color: 'from-pink-100 to-pink-200 dark:from-pink-950/40 dark:to-pink-900/40',
-      emoji: '💖',
-      timestamp: Date.now()
-    },
-    {
-      id: 'note-2',
-      sender: 'SO',
-      text: 'يا أهلاً يا دودي! سعيدة جداً بوجودنا هنا معاً دائماً 🥰',
-      color: 'from-rose-100 to-rose-200 dark:from-rose-950/40 dark:to-rose-900/40',
-      emoji: '✨',
-      timestamp: Date.now() + 1000
-    }
-  ],
-  activityFeed: [
-    {
-      id: 'act-1',
-      sender: 'Dodo',
-      type: 'sticky_note',
-      titleAr: 'رسالة معلقة جديدة 📌',
-      titleEn: 'New Sticky Note 📌',
-      descAr: 'تم تعليق رسالة ترحيب أولى بنجاح!',
-      descEn: 'A welcoming note was successfully pinned!',
-      timestamp: Date.now()
-    }
-  ],
-  loveQuizAnswers: {},
-  chatMessages: [],
-  dodoStatus: { typing: false, recording: false, choosing: false },
-  soStatus: { typing: false, recording: false, choosing: false },
-  saeedProfile: defaultSaeedProfile,
-  sohilaProfile: defaultSohilaProfile,
-  knowledgeBase: defaultKnowledgeBase,
-  knowledgeQuizScores: {},
-  memories: defaultMemories,
-  galleryItems: defaultGalleryItems,
-  videoItems: defaultVideos,
-  songs: defaultSongs,
-  envelopes: defaultEnvelopes,
-  dateActivities: defaultDateActivities,
-  dailyQuestions: getDefaultDailyQuestions(),
-  quotes: [],
-  quizQuestions: [],
-  voiceMessages: []
-};
+function buildDefaultState(): InteractionState {
+  return {
+    dodoMood: 'سعيد 🌸',
+    soMood: 'مشتاقة 💕',
+    dodoLastUpdated: new Date().toISOString(),
+    soLastUpdated: new Date().toISOString(),
+    dodoLastActive: new Date().toISOString(),
+    soLastActive: new Date().toISOString(),
+    pendingBuzzes: [],
+    stickyNotes: [
+      {
+        id: 'note-1',
+        sender: 'Dodo',
+        text: 'مرحباً بكِ في قبو حبنا التفاعلي يا سو! ♾️❤️',
+        color: 'from-pink-100 to-pink-200 dark:from-pink-950/40 dark:to-pink-900/40',
+        emoji: '💖',
+        timestamp: Date.now()
+      },
+      {
+        id: 'note-2',
+        sender: 'SO',
+        text: 'يا أهلاً يا دودي! سعيدة جداً بوجودنا هنا معاً دائماً 🥰',
+        color: 'from-rose-100 to-rose-200 dark:from-rose-950/40 dark:to-rose-900/40',
+        emoji: '✨',
+        timestamp: Date.now() + 1000
+      }
+    ],
+    activityFeed: [
+      {
+        id: 'act-1',
+        sender: 'Dodo',
+        type: 'sticky_note',
+        titleAr: 'رسالة معلقة جديدة 📌',
+        titleEn: 'New Sticky Note 📌',
+        descAr: 'تم تعليق رسالة ترحيب أولى بنجاح!',
+        descEn: 'A welcoming note was successfully pinned!',
+        timestamp: Date.now()
+      }
+    ],
+    loveQuizAnswers: {},
+    chatMessages: [],
+    dodoStatus: { typing: false, recording: false, choosing: false },
+    soStatus: { typing: false, recording: false, choosing: false },
+    saeedProfile: defaultSaeedProfile,
+    sohilaProfile: defaultSohilaProfile,
+    knowledgeBase: defaultKnowledgeBase,
+    knowledgeQuizScores: {},
+    memories: defaultMemories,
+    galleryItems: defaultGalleryItems,
+    videoItems: defaultVideos,
+    songs: defaultSongs,
+    envelopes: defaultEnvelopes,
+    dateActivities: defaultDateActivities,
+    dailyQuestions: getDefaultDailyQuestions(),
+    quotes: [],
+    quizQuestions: [],
+    voiceMessages: []
+  };
+}
 
-// State file helper
-const STATE_FILE_PATH = path.join(process.cwd(), 'src', 'interaction_db.json');
+// --- State read/write now backed by Upstash Redis instead of a local file ---
 
-function readState(): InteractionState {
+async function readState(): Promise<InteractionState> {
   try {
-    if (fs.existsSync(STATE_FILE_PATH)) {
-      const raw = fs.readFileSync(STATE_FILE_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
+    const raw = await redis.get<InteractionState>(STATE_KEY);
+    if (raw) {
+      const parsed = raw as InteractionState;
       parsed.activityFeed = parsed.activityFeed || [];
       parsed.pendingBuzzes = parsed.pendingBuzzes || [];
       parsed.stickyNotes = parsed.stickyNotes || [];
@@ -197,55 +194,48 @@ function readState(): InteractionState {
       parsed.dodoStatus = parsed.dodoStatus || { typing: false, recording: false, choosing: false };
       parsed.soStatus = parsed.soStatus || { typing: false, recording: false, choosing: false };
 
-      if (!parsed.saeedProfile) parsed.saeedProfile = defaultSaeedProfile;
-      if (!parsed.sohilaProfile) parsed.sohilaProfile = defaultSohilaProfile;
-      if (!parsed.knowledgeBase) parsed.knowledgeBase = defaultKnowledgeBase;
+      const defaults = buildDefaultState();
+      if (!parsed.saeedProfile) parsed.saeedProfile = defaults.saeedProfile;
+      if (!parsed.sohilaProfile) parsed.sohilaProfile = defaults.sohilaProfile;
+      if (!parsed.knowledgeBase) parsed.knowledgeBase = defaults.knowledgeBase;
       if (!parsed.knowledgeQuizScores) parsed.knowledgeQuizScores = {};
-      if (!parsed.memories || parsed.memories.length === 0) parsed.memories = defaultMemories;
-      if (!parsed.galleryItems || parsed.galleryItems.length === 0) parsed.galleryItems = defaultGalleryItems;
-      if (!parsed.videoItems || parsed.videoItems.length === 0) parsed.videoItems = defaultVideos;
-      if (!parsed.songs || parsed.songs.length === 0) parsed.songs = defaultSongs;
-      if (!parsed.envelopes || parsed.envelopes.length === 0) parsed.envelopes = defaultEnvelopes;
-      if (!parsed.dateActivities || parsed.dateActivities.length === 0) parsed.dateActivities = defaultDateActivities;
-      if (!parsed.dailyQuestions || parsed.dailyQuestions.length === 0) parsed.dailyQuestions = getDefaultDailyQuestions();
+      if (!parsed.memories || parsed.memories.length === 0) parsed.memories = defaults.memories;
+      if (!parsed.galleryItems || parsed.galleryItems.length === 0) parsed.galleryItems = defaults.galleryItems;
+      if (!parsed.videoItems || parsed.videoItems.length === 0) parsed.videoItems = defaults.videoItems;
+      if (!parsed.songs || parsed.songs.length === 0) parsed.songs = defaults.songs;
+      if (!parsed.envelopes || parsed.envelopes.length === 0) parsed.envelopes = defaults.envelopes;
+      if (!parsed.dateActivities || parsed.dateActivities.length === 0) parsed.dateActivities = defaults.dateActivities;
+      if (!parsed.dailyQuestions || parsed.dailyQuestions.length === 0) parsed.dailyQuestions = defaults.dailyQuestions;
       if (!parsed.quotes) parsed.quotes = [];
       if (!parsed.quizQuestions) parsed.quizQuestions = [];
       if (!parsed.voiceMessages) parsed.voiceMessages = [];
 
-      // Auto-clear activities older than 24 hours (daily automatic cleanup)
+      // Auto-clear activities older than 24 hours
       const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
       const originalLength = parsed.activityFeed.length;
       parsed.activityFeed = parsed.activityFeed.filter((act: any) => act.timestamp > oneDayAgo);
-
       if (parsed.activityFeed.length !== originalLength) {
-        fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(parsed, null, 2), 'utf8');
+        await redis.set(STATE_KEY, parsed);
       }
 
       return parsed;
     }
   } catch (err) {
-    console.error('Error reading interaction state file, falling back to in-memory:', err);
+    console.error('Error reading interaction state from Redis, falling back to default:', err);
   }
-  
-  // Also clean the DEFAULT_STATE if it falls back
-  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  DEFAULT_STATE.activityFeed = (DEFAULT_STATE.activityFeed || []).filter((act: any) => act.timestamp > oneDayAgo);
-  return DEFAULT_STATE;
+
+  const defaultState = buildDefaultState();
+  await redis.set(STATE_KEY, defaultState);
+  return defaultState;
 }
 
-function writeState(state: InteractionState) {
+async function writeState(state: InteractionState) {
   try {
-    fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(state, null, 2), 'utf8');
+    await redis.set(STATE_KEY, state);
   } catch (err) {
-    console.error('Error writing interaction state file:', err);
+    console.error('Error writing interaction state to Redis:', err);
   }
 }
-
-// Ensure database file is initialized
-let activeState = readState();
-writeState(activeState);
-
-// --- API ENDPOINTS ---
 
 // --- API ENDPOINTS & HELPERS ---
 
@@ -276,19 +266,19 @@ function pushActivity(
 }
 
 // Get current live state
-app.get('/api/interaction-state', (req, res) => {
-  activeState = readState();
+app.get('/api/interaction-state', async (req, res) => {
+  const activeState = await readState();
   res.json(activeState);
 });
 
 // Update shared database collection (Single Source of Truth)
-app.post('/api/shared/update', (req, res) => {
+app.post('/api/shared/update', async (req, res) => {
   const { key, data, sender, activity } = req.body;
   if (!key) {
     return res.status(400).json({ error: 'Key is required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   (activeState as any)[key] = data;
 
   if (activity && sender) {
@@ -304,15 +294,15 @@ app.post('/api/shared/update', (req, res) => {
     );
   }
 
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
-// Direct Media & Memory Upload Endpoint
-app.post('/api/upload', (req, res) => {
+// Direct Media & Memory Upload Endpoint (now stores files in Vercel Blob, not local disk)
+app.post('/api/upload', async (req, res) => {
   const { role, category, title, description, date, artist, location, fileData, fileName, filesBatch } = req.body;
-  
-  const itemsToUpload: Array<{ fileData: string; fileName: string }> = 
+
+  const itemsToUpload: Array<{ fileData: string; fileName: string }> =
     Array.isArray(filesBatch) && filesBatch.length > 0
       ? filesBatch
       : fileData ? [{ fileData, fileName }] : [];
@@ -322,15 +312,15 @@ app.post('/api/upload', (req, res) => {
   }
 
   try {
-    activeState = readState();
+    const activeState = await readState();
     const senderName = role === 'Dodo' ? 'سعيد' : 'سهيلة';
     const createdItems: any[] = [];
 
-    itemsToUpload.forEach((item: any, idx: number) => {
+    for (let idx = 0; idx < itemsToUpload.length; idx++) {
+      const item: any = itemsToUpload[idx];
       const timestamp = Date.now() + idx;
       const safeName = (item.fileName || 'file').replace(/[^a-zA-Z0-9.-]/g, '_');
       const storedFileName = `${timestamp}_${safeName}`;
-      const filePath = path.join(UPLOADS_DIR, storedFileName);
 
       let fileBuffer: Buffer;
       const dataStr = item.fileData;
@@ -345,8 +335,9 @@ app.post('/api/upload', (req, res) => {
         fileBuffer = Buffer.from(dataStr, 'base64');
       }
 
-      fs.writeFileSync(filePath, fileBuffer);
-      const fileUrl = `/uploads/${storedFileName}`;
+      // Upload to Vercel Blob - returns a permanent public URL
+      const blob = await put(storedFileName, fileBuffer, { access: 'public' });
+      const fileUrl = blob.url;
 
       if (category === 'gallery') {
         const newItem: GalleryItem = {
@@ -391,7 +382,7 @@ app.post('/api/upload', (req, res) => {
         activeState.memories.unshift(newItem);
         createdItems.push(newItem);
       }
-    });
+    }
 
     const count = itemsToUpload.length;
     let actTitleAr = 'محتوى جديد 📤';
@@ -431,7 +422,7 @@ app.post('/api/upload', (req, res) => {
       actDescEn
     );
 
-    writeState(activeState);
+    await writeState(activeState);
     return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
   } catch (err: any) {
     console.error('Error during file upload:', err);
@@ -440,30 +431,30 @@ app.post('/api/upload', (req, res) => {
 });
 
 // Update user presence
-app.post('/api/interaction-state/presence', (req, res) => {
+app.post('/api/interaction-state/presence', async (req, res) => {
   const { role } = req.body;
   if (!role) {
     return res.status(400).json({ error: 'Role is required' });
   }
-  activeState = readState();
+  const activeState = await readState();
   const nowStr = new Date().toISOString();
   if (role === 'Dodo') {
     activeState.dodoLastActive = nowStr;
   } else if (role === 'SO') {
     activeState.soLastActive = nowStr;
   }
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
 // Update current partner mood
-app.post('/api/interaction-state/mood', (req, res) => {
+app.post('/api/interaction-state/mood', async (req, res) => {
   const { role, mood } = req.body;
   if (!role || !mood) {
     return res.status(400).json({ error: 'Role and mood are required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   const nameAr = role === 'Dodo' ? 'سعيد (دودي)' : 'سهيلة (سو)';
   const nameEn = role === 'Dodo' ? 'Saeed (Dodo)' : 'Sohila (SO)';
 
@@ -485,18 +476,18 @@ app.post('/api/interaction-state/mood', (req, res) => {
     `Partner ${nameEn} changed their mood to: "${mood}"`
   );
 
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
 // Send a love heartbeat buzz
-app.post('/api/interaction-state/buzz', (req, res) => {
+app.post('/api/interaction-state/buzz', async (req, res) => {
   const { sender, type } = req.body;
   if (!sender || !type) {
     return res.status(400).json({ error: 'Sender and buzz type are required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   const newBuzz: Buzz = {
     id: 'buzz-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
     sender,
@@ -504,20 +495,19 @@ app.post('/api/interaction-state/buzz', (req, res) => {
     timestamp: Date.now()
   };
 
-  // Keep max 5 pending buzzes
   activeState.pendingBuzzes.push(newBuzz);
   if (activeState.pendingBuzzes.length > 5) {
     activeState.pendingBuzzes.shift();
   }
 
-  const emojiMap = { heart: '❤️', kiss: '💋', hug: '🫂', poke: '👉' };
-  const typeArMap = { heart: 'نبضة حب', kiss: 'قبلة رقيقة', hug: 'حضن دافئ', poke: 'نغزة مشاكسة' };
-  const typeEnMap = { heart: 'love heartbeat', kiss: 'sweet kiss', hug: 'warm hug', poke: 'playful poke' };
-  
+  const emojiMap: any = { heart: '❤️', kiss: '💋', hug: '🫂', poke: '👉' };
+  const typeArMap: any = { heart: 'نبضة حب', kiss: 'قبلة رقيقة', hug: 'حضن دافئ', poke: 'نغزة مشاكسة' };
+  const typeEnMap: any = { heart: 'love heartbeat', kiss: 'sweet kiss', hug: 'warm hug', poke: 'playful poke' };
+
   const emoji = emojiMap[type] || '❤️';
   const typeAr = typeArMap[type] || 'نبضة حب';
   const typeEn = typeEnMap[type] || 'love heartbeat';
-  
+
   const partnerNameAr = sender === 'Dodo' ? 'دودي' : 'سو';
   const partnerNameEn = sender === 'Dodo' ? 'Dodo' : 'SO';
 
@@ -531,31 +521,31 @@ app.post('/api/interaction-state/buzz', (req, res) => {
     `${partnerNameEn} sent an instant ${typeEn}!`
   );
 
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, newBuzz, state: activeState });
 });
 
 // Acknowledge a buzz so it is cleared on receiver's end
-app.post('/api/interaction-state/buzz/ack', (req, res) => {
+app.post('/api/interaction-state/buzz/ack', async (req, res) => {
   const { id } = req.body;
   if (!id) {
     return res.status(400).json({ error: 'Buzz ID is required for acknowledgment' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   activeState.pendingBuzzes = activeState.pendingBuzzes.filter(b => b.id !== id);
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
 // Add a sticky love note
-app.post('/api/interaction-state/note', (req, res) => {
+app.post('/api/interaction-state/note', async (req, res) => {
   const { sender, text, color, emoji } = req.body;
   if (!sender || !text) {
     return res.status(400).json({ error: 'Sender and text are required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   const newNote: StickyNote = {
     id: 'note-' + Date.now(),
     sender,
@@ -565,8 +555,7 @@ app.post('/api/interaction-state/note', (req, res) => {
     timestamp: Date.now()
   };
 
-  activeState.stickyNotes.unshift(newNote); // newest first
-  // Limit to max 30 sticky notes
+  activeState.stickyNotes.unshift(newNote);
   if (activeState.stickyNotes.length > 30) {
     activeState.stickyNotes.pop();
   }
@@ -584,27 +573,27 @@ app.post('/api/interaction-state/note', (req, res) => {
     `Partner ${partnerNameEn} pinned a new love note: "${text}"`
   );
 
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, newNote, state: activeState });
 });
 
 // Delete a sticky love note
-app.delete('/api/interaction-state/note/:id', (req, res) => {
+app.delete('/api/interaction-state/note/:id', async (req, res) => {
   const { id } = req.params;
-  activeState = readState();
+  const activeState = await readState();
   activeState.stickyNotes = activeState.stickyNotes.filter(n => n.id !== id);
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
 // Submit a quiz or question answer
-app.post('/api/interaction-state/quiz-answer', (req, res) => {
+app.post('/api/interaction-state/quiz-answer', async (req, res) => {
   const { questionId, role, answer, questionAr, questionEn } = req.body;
   if (!questionId || !role || !answer) {
     return res.status(400).json({ error: 'Question ID, role, and answer are required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   if (!activeState.loveQuizAnswers[questionId]) {
     activeState.loveQuizAnswers[questionId] = {};
   }
@@ -620,7 +609,7 @@ app.post('/api/interaction-state/quiz-answer', (req, res) => {
 
   const partnerNameAr = role === 'Dodo' ? 'سعيد (دودي)' : 'سهيلة (سو)';
   const partnerNameEn = role === 'Dodo' ? 'Saeed (Dodo)' : 'Sohila (SO)';
-  
+
   const questionTitleAr = questionAr || 'سؤال اليوم';
   const questionTitleEn = questionEn || 'daily question';
 
@@ -646,33 +635,33 @@ app.post('/api/interaction-state/quiz-answer', (req, res) => {
     );
   }
 
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
 // Log a custom action / activity (wheel spin, game score, envelope open)
-app.post('/api/interaction-state/activity', (req, res) => {
+app.post('/api/interaction-state/activity', async (req, res) => {
   const { sender, type, titleAr, titleEn, descAr, descEn } = req.body;
   if (!sender || !type || !titleAr || !titleEn || !descAr || !descEn) {
     return res.status(400).json({ error: 'Missing required activity fields' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   pushActivity(activeState, sender, type, titleAr, titleEn, descAr, descEn);
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
 // --- PRIVATE CHAT SYSTEM ENDPOINTS ---
 
 // Send a chat message
-app.post('/api/chat/message', (req, res) => {
+app.post('/api/chat/message', async (req, res) => {
   const { sender, text, mediaUrl, mediaType, voiceDuration, replyToId, replyToText, replyToSender, sharedItem } = req.body;
   if (!sender) {
     return res.status(400).json({ error: 'Sender is required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   const newMessage: ChatMessage = {
     id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
     sender,
@@ -693,13 +682,10 @@ app.post('/api/chat/message', (req, res) => {
   activeState.chatMessages = activeState.chatMessages || [];
   activeState.chatMessages.push(newMessage);
 
-  // Messages are kept permanently stored in interaction_db.json
   if (activeState.chatMessages.length > 100000) {
     activeState.chatMessages.shift();
   }
 
-  // Push activity feed notification for partner
-  const isPartnerFemale = sender === 'SO';
   const partnerNameAr = sender === 'Dodo' ? 'سعيد' : 'سهيلة';
   const partnerNameEn = sender === 'Dodo' ? 'Saeed' : 'Sohila';
 
@@ -726,51 +712,51 @@ app.post('/api/chat/message', (req, res) => {
   }
 
   pushActivity(activeState, sender, 'chat', titleAr, titleEn, descAr, descEn);
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, newMessage, state: activeState });
 });
 
 // Edit a chat message
-app.put('/api/chat/message/:id', (req, res) => {
+app.put('/api/chat/message/:id', async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
   if (!text) {
     return res.status(400).json({ error: 'Text is required for editing' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   const msg = activeState.chatMessages.find(m => m.id === id);
   if (msg) {
     msg.text = text;
     msg.isEdited = true;
-    writeState(activeState);
+    await writeState(activeState);
     return res.json({ success: true, message: msg, state: activeState });
   }
   res.status(404).json({ error: 'Message not found' });
 });
 
 // Delete a chat message
-app.delete('/api/chat/message/:id', (req, res) => {
+app.delete('/api/chat/message/:id', async (req, res) => {
   const { id } = req.params;
-  activeState = readState();
+  const activeState = await readState();
   const initialLength = activeState.chatMessages.length;
   activeState.chatMessages = activeState.chatMessages.filter(m => m.id !== id);
   if (activeState.chatMessages.length !== initialLength) {
-    writeState(activeState);
+    await writeState(activeState);
     return res.json({ success: true, state: activeState });
   }
   res.status(404).json({ error: 'Message not found' });
 });
 
 // React to a message
-app.post('/api/chat/message/:id/react', (req, res) => {
+app.post('/api/chat/message/:id/react', async (req, res) => {
   const { id } = req.params;
   const { role, emoji } = req.body;
   if (!role) {
     return res.status(400).json({ error: 'Role is required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   const msg = activeState.chatMessages.find(m => m.id === id);
   if (msg) {
     msg.reactions = msg.reactions || {};
@@ -779,41 +765,40 @@ app.post('/api/chat/message/:id/react', (req, res) => {
     } else {
       msg.reactions[role] = emoji;
     }
-    writeState(activeState);
+    await writeState(activeState);
     return res.json({ success: true, message: msg, state: activeState });
   }
   res.status(404).json({ error: 'Message not found' });
 });
 
 // Pin or unpin a message
-app.post('/api/chat/message/:id/pin', (req, res) => {
+app.post('/api/chat/message/:id/pin', async (req, res) => {
   const { id } = req.params;
   const { isPinned } = req.body;
 
-  activeState = readState();
+  const activeState = await readState();
   const msg = activeState.chatMessages.find(m => m.id === id);
   if (msg) {
-    // Unpin other messages if pinning this one
     if (isPinned) {
       activeState.chatMessages.forEach(m => {
         m.isPinned = false;
       });
     }
     msg.isPinned = isPinned;
-    writeState(activeState);
+    await writeState(activeState);
     return res.json({ success: true, message: msg, state: activeState });
   }
   res.status(404).json({ error: 'Message not found' });
 });
 
 // Update dynamic typing / recording / choosing status
-app.post('/api/chat/status', (req, res) => {
+app.post('/api/chat/status', async (req, res) => {
   const { role, typing, recording, choosing } = req.body;
   if (!role) {
     return res.status(400).json({ error: 'Role is required' });
   }
 
-  activeState = readState();
+  const activeState = await readState();
   const statusUpdate = {
     typing: !!typing,
     recording: !!recording,
@@ -826,29 +811,8 @@ app.post('/api/chat/status', (req, res) => {
     activeState.soStatus = statusUpdate;
   }
 
-  writeState(activeState);
+  await writeState(activeState);
   res.json({ success: true, state: activeState });
 });
 
-// Serve compiled build or Vite dev server middleware
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Express interactive server running on http://localhost:${PORT}`);
-  });
-}
-
-startServer();
+export default app;
