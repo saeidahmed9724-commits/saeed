@@ -1,0 +1,24 @@
+{
+  "name": "Saeed & Sohila",
+  "short_name": "Saeed & Sohila",
+  "description": "A premium private romantic website designed exclusively for Saeed and Sohila, with a luxury iOS-application-like experience.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF9F6",
+  "theme_color": "#E0A96D",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/fluent/192/000000/heart-balloon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://img.icons8.com/fluent/512/000000/heart-balloon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
