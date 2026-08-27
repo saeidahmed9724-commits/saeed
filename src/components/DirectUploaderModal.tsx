@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Music, Film, Heart, CheckCircle2, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Language, UserRole } from '../types';
 import { DataStore } from '../dataStore';
+import { uploadFilesDirect } from '../uploadService'; // <--- الجديد
 
 interface DirectUploaderModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ type UploadCategory = 'gallery' | 'song' | 'video' | 'memory';
 interface SelectedFileItem {
   id: string;
   file: File;
-  preview: string;
+  preview: string; // للصور فقط هنعمل preview، للاغاني والفيديو هنستخدم object URL
 }
 
 export default function DirectUploaderModal({
@@ -35,6 +36,7 @@ export default function DirectUploaderModal({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [progressText, setProgressText] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,7 +46,6 @@ export default function DirectUploaderModal({
     const filesArray = Array.from(fileList);
     if (filesArray.length === 0) return;
 
-    // Auto detect category from first file if needed
     const first = filesArray[0];
     if (first.type.startsWith('image/')) {
       setCategory('gallery');
@@ -56,27 +57,27 @@ export default function DirectUploaderModal({
 
     setUploadStatus('idle');
 
+    // بدل FileReader -> base64 (اللي كان بيفرقع الـ 4.5MB)
+    // بنستخدم URL.createObjectURL للمعاينة فقط، خفيف جدا
     filesArray.forEach((f) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const preview = reader.result as string;
-        setSelectedFiles((prev) => [
-          ...prev,
-          {
-            id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            file: f,
-            preview
-          }
-        ]);
-      };
-      reader.readAsDataURL(f);
+      const preview = f.type.startsWith('image/') 
+        ? URL.createObjectURL(f) 
+        : ''; // للاغاني والفيديو مش محتاجين preview تقيل
+      
+      setSelectedFiles((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          file: f,
+          preview
+        }
+      ]);
     });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       processFiles(e.target.files);
-      // reset value so re-selecting same files triggers change event
       e.target.value = '';
     }
   };
@@ -89,10 +90,15 @@ export default function DirectUploaderModal({
   };
 
   const removeFile = (idToRemove: string) => {
-    setSelectedFiles((prev) => prev.filter((item) => item.id !== idToRemove));
+    setSelectedFiles((prev) => {
+      const toRemove = prev.find(p => p.id === idToRemove);
+      if (toRemove?.preview) URL.revokeObjectURL(toRemove.preview);
+      return prev.filter((item) => item.id !== idToRemove);
+    });
   };
 
   const clearAllFiles = () => {
+    selectedFiles.forEach(f => { if(f.preview) URL.revokeObjectURL(f.preview) });
     setSelectedFiles([]);
   };
 
@@ -107,58 +113,59 @@ export default function DirectUploaderModal({
     setIsUploading(true);
     setUploadStatus('idle');
     setErrorMessage('');
+    setProgressText(lang === 'ar' ? 'جاري تجهيز الروابط الآمنة...' : 'Preparing secure links...');
 
     try {
-      const filesBatch = selectedFiles.map((item) => ({
-        fileName: item.file.name,
-        fileData: item.preview
-      }));
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: currentRole,
-          category,
-          title: category === 'song' ? title.trim() : (title.trim() || (selectedFiles.length === 1 ? selectedFiles[0].file.name : '')),
-          description: description.trim(),
-          date,
+      // === الحل الجديد: 3 خطوات، الملف مش بيعدي على فيرسل ===
+      // uploadFilesDirect بيعمل: sign -> upload direct to Supabase -> complete
+      
+      const result = await uploadFilesDirect(
+        currentRole, // section = الدور (Dodo / Sohila) - استخدمت currentRole زي ما كان عندك role
+        category,
+        selectedFiles.map(item => ({
+          file: item.file,
+          title: category === 'song' ? (title.trim() || item.file.name) : (title.trim() || item.file.name),
           artist: artist.trim(),
-          filesBatch
-        })
-      });
+          description: description.trim(),
+          date: date,
+        })) as any,
+        (msg) => setProgressText(msg) // callback للـ progress لو عايز
+      );
 
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setIsUploading(false);
-        setUploadStatus('success');
-
-        // Sync local datastore
-        if (data.state) {
-          DataStore.syncFromRemote(data.state);
+      // result ده هو نفس data.state اللي كنت بترجعه قبل كده
+      if (result?.state) {
+        DataStore.syncFromRemote(result.state);
+      } else if ((result as any)?.files) {
+        // لو الـ backend الجديد بيرجع files بس، اعمل reload للـ state
+        // ممكن تعمل fetch للـ state بعد الرفع
+        const stateRes = await fetch('/api/state');
+        if (stateRes.ok) {
+          const stateData = await stateRes.json();
+          DataStore.syncFromRemote(stateData);
         }
-
-        if (onSuccess) {
-          onSuccess();
-        }
-
-        setTimeout(() => {
-          // Reset fields and close
-          setSelectedFiles([]);
-          setTitle('');
-          setDescription('');
-          setArtist('');
-          setUploadStatus('idle');
-          onClose();
-        }, 1200);
-      } else {
-        throw new Error(data.error || 'Upload failed');
       }
+
+      setIsUploading(false);
+      setUploadStatus('success');
+      setProgressText('');
+
+      if (onSuccess) onSuccess();
+
+      setTimeout(() => {
+        clearAllFiles();
+        setTitle('');
+        setDescription('');
+        setArtist('');
+        setUploadStatus('idle');
+        onClose();
+      }, 1200);
+
     } catch (err: any) {
       console.error(err);
       setIsUploading(false);
       setUploadStatus('error');
-      setErrorMessage(lang === 'ar' ? 'حدث خطأ أثناء الرفع، حاول مرة أخرى' : 'Failed to upload, please try again.');
+      setErrorMessage(err.message || (lang === 'ar' ? 'حدث خطأ أثناء الرفع، حاول مرة أخرى' : 'Failed to upload, please try again.'));
+      setProgressText('');
     }
   };
 
@@ -177,192 +184,62 @@ export default function DirectUploaderModal({
                 {lang === 'ar' ? 'رفع صور ووسائط متعددة 📤' : 'Multiple Media Upload 📤'}
               </h3>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                {lang === 'ar' ? 'يمكنك تحديد عدة صور أو ملفات ورفعهم معاً دفعة واحدة 💖' : 'Select multiple photos or files and upload them together 💖'}
+                {lang === 'ar' ? 'الرفع المباشر - يدعم ملفات كبيرة 💖' : 'Direct upload - supports large files 💖'}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-          >
-            <X size={20} />
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center hover:bg-neutral-200">
+            <X size={16} />
           </button>
         </div>
 
-        {/* Content Body */}
-        <form onSubmit={handleUpload} className="p-6 overflow-y-auto space-y-5 flex-1">
-          
-          {/* Category Selector */}
-          <div>
-            <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">
-              {lang === 'ar' ? 'تصنيف المحتوى 🏷️' : 'Content Category 🏷️'}
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                type="button"
-                onClick={() => setCategory('gallery')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
-                  category === 'gallery'
-                    ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
-                    : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
-                }`}
-              >
-                <ImageIcon size={18} />
-                <span>{lang === 'ar' ? 'معرض الصور' : 'Gallery Photo'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCategory('song')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
-                  category === 'song'
-                    ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
-                    : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
-                }`}
-              >
-                <Music size={18} />
-                <span>{lang === 'ar' ? 'أغنية / صوت' : 'Song / Audio'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCategory('video')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
-                  category === 'video'
-                    ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
-                    : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
-                }`}
-              >
-                <Film size={18} />
-                <span>{lang === 'ar' ? 'فيديو ريلز' : 'Video Reel'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setCategory('memory')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
-                  category === 'memory'
-                    ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
-                    : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
-                }`}
-              >
-                <Heart size={18} />
-                <span>{lang === 'ar' ? 'ذكرى رومانسية' : 'Memory'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Multiple File Picker Area */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                {lang === 'ar' ? 'الملفات المحددة للرفع 📁' : 'Selected Files 📁'}
-              </label>
-              {selectedFiles.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAllFiles}
-                  className="text-[11px] font-bold text-red-500 hover:text-red-600 flex items-center gap-1 cursor-pointer"
-                >
-                  <Trash2 size={12} />
-                  <span>{lang === 'ar' ? 'مسح الكل' : 'Clear all'}</span>
-                </button>
-              )}
-            </div>
-
+        <form onSubmit={handleUpload} className="p-5 space-y-4 overflow-y-auto">
+          {/* Drop Zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            className="border-2 border-dashed border-rose-gold-200 dark:border-white/10 rounded-2xl p-4 bg-rose-gold-50/30 dark:bg-neutral-800/50"
+          >
             <input
-              type="file"
               ref={fileInputRef}
-              onChange={handleFileSelect}
+              type="file"
               multiple
-              accept={
-                category === 'gallery'
-                  ? 'image/*'
-                  : category === 'song'
-                  ? 'audio/*'
-                  : category === 'video'
-                  ? 'video/*'
-                  : 'image/*,audio/*,video/*'
-              }
+              accept="image/*,audio/*,video/*"
+              onChange={handleFileSelect}
               className="hidden"
             />
 
-            {/* Selected files preview list/grid */}
             {selectedFiles.length > 0 ? (
-              <div className="space-y-3 p-4 bg-rose-gold-50/40 dark:bg-rose-gold-950/20 rounded-3xl border border-rose-gold-200 dark:border-white/10">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-                  {selectedFiles.map((item) => (
-                    <div
-                      key={item.id}
-                      className="relative group rounded-2xl overflow-hidden border border-neutral-200 dark:border-white/10 bg-white dark:bg-neutral-800 shadow-xs aspect-square flex flex-col items-center justify-center p-1"
-                    >
-                      {category === 'gallery' || item.file.type.startsWith('image/') ? (
-                        <img
-                          src={item.preview}
-                          alt={item.file.name}
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                      ) : category === 'video' || item.file.type.startsWith('video/') ? (
-                        <video
-                          src={item.preview}
-                          className="w-full h-full object-cover rounded-xl"
-                        />
-                      ) : category === 'song' || item.file.type.startsWith('audio/') ? (
-                        <div className="flex flex-col items-center justify-center text-center p-2">
-                          <Music className="text-rose-gold-500 mb-1" size={24} />
-                          <span className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 line-clamp-1 w-full">
-                            {item.file.name}
-                          </span>
-                        </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold">{selectedFiles.length} ملفات محددة</p>
+                  <button type="button" onClick={clearAllFiles} className="text-xs text-red-500 flex items-center gap-1">
+                    <Trash2 size={12} /> مسح الكل
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                  {selectedFiles.map(item => (
+                    <div key={item.id} className="relative group rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800 aspect-square">
+                      {item.file.type.startsWith('image/') && item.preview ? (
+                        <img src={item.preview} alt={item.file.name} className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-[10px] font-mono text-neutral-600 dark:text-neutral-400 line-clamp-2 p-1 text-center">
-                          {item.file.name}
-                        </span>
+                        <div className="w-full h-full flex flex-col items-center justify-center p-2">
+                          {item.file.type.startsWith('audio/') ? <Music size={20} /> : <Film size={20} />}
+                          <p className="text-[9px] mt-1 truncate w-full text-center">{item.file.name}</p>
+                          <p className="text-[8px] text-neutral-400">{(item.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
                       )}
-
-                      {/* Remove single button */}
-                      <button
-                        type="button"
-                        onClick={() => removeFile(item.id)}
-                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 text-white flex items-center justify-center transition-all opacity-90 group-hover:opacity-100 shadow-xs"
-                        title={lang === 'ar' ? 'حذف هذه الصورة' : 'Remove'}
-                      >
-                        <X size={12} />
+                      <button type="button" onClick={() => removeFile(item.id)} className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <X size={10} />
                       </button>
-
-                      <div className="absolute bottom-1 left-1 right-1 bg-black/60 backdrop-blur-xs rounded-md px-1.5 py-0.5 text-[9px] text-white truncate font-medium text-center">
-                        {Math.round(item.file.size / 1024)} KB
-                      </div>
                     </div>
                   ))}
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-rose-gold-200/50">
-                  <div className="flex items-center gap-1.5 text-xs text-rose-gold-600 dark:text-rose-gold-300 font-bold">
-                    <CheckCircle2 size={16} />
-                    <span>
-                      {lang === 'ar'
-                        ? `تم اختيار ${selectedFiles.length} ملفات جاهزة للرفع`
-                        : `${selectedFiles.length} files selected`}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1 text-xs font-bold text-rose-gold-600 dark:text-rose-gold-300 hover:underline cursor-pointer"
-                  >
-                    <Plus size={14} />
-                    <span>{lang === 'ar' ? 'إضافة المزيد' : 'Add More'}</span>
-                  </button>
                 </div>
               </div>
             ) : (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleDrop}
-                className="border-2 border-dashed border-neutral-300 dark:border-neutral-700 hover:border-rose-gold-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded-3xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3"
+                className="cursor-pointer flex flex-col items-center justify-center gap-3 py-6 text-center"
               >
                 <div className="w-12 h-12 rounded-full bg-rose-gold-100 dark:bg-rose-gold-900/40 text-rose-gold-600 flex items-center justify-center">
                   <Upload size={24} />
@@ -372,7 +249,7 @@ export default function DirectUploaderModal({
                     {lang === 'ar' ? 'اضغط هنا لاختيار عدة صور/ملفات أو اسحبهم هنا 📸' : 'Click to select multiple files or drag & drop 📸'}
                   </p>
                   <p className="text-xs text-neutral-400 mt-1">
-                    {lang === 'ar' ? 'يمكنك اختيار أكثر من صورة أو ملف في نفس الوقت' : 'You can choose multiple photos or files at once'}
+                    {lang === 'ar' ? 'يدعم الآن الأغاني والفيديوهات بأي حجم' : 'Now supports songs & videos of any size'}
                   </p>
                 </div>
               </div>
@@ -450,6 +327,13 @@ export default function DirectUploaderModal({
           </div>
 
           {/* Status feedback */}
+          {progressText && isUploading && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300 rounded-xl text-xs font-bold">
+              <Loader2 size={16} className="animate-spin" />
+              <span>{progressText}</span>
+            </div>
+          )}
+
           {uploadStatus === 'error' && (
             <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300 rounded-xl text-xs font-bold">
               <AlertCircle size={16} />
@@ -477,7 +361,7 @@ export default function DirectUploaderModal({
             {isUploading ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                <span>{lang === 'ar' ? `جاري رفع ${selectedFiles.length} ملفات...` : `Uploading ${selectedFiles.length} files...`}</span>
+                <span>{progressText || (lang === 'ar' ? `جاري رفع ${selectedFiles.length} ملفات...` : `Uploading ${selectedFiles.length} files...`)}</span>
               </>
             ) : (
               <>

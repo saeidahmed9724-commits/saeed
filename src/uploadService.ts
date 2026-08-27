@@ -1,97 +1,100 @@
-import { createClient } from '@supabase/supabase-js';
+// src/uploadService.ts - النسخة النهائية المحسنة
+// يحل مشكلة 4.5MB بتاعة فيرسل نهائيا
 
-// Uses the PUBLIC anon key (safe to expose in the browser bundle) — this is
-// different from the SUPABASE_SECRET_KEY used on the server. Add it to your
-// Vercel project's environment variables as VITE_SUPABASE_ANON_KEY.
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string
-);
-
-const STORAGE_BUCKET = 'user-media';
-
-export type UploadCategory = 'gallery' | 'song' | 'video' | 'memory' | 'voice';
-
-export interface DirectUploadItem {
+type UploadItemInput = {
   file: File;
   title?: string;
+  artist?: string;
   description?: string;
   date?: string;
-  artist?: string;
-}
+};
 
-interface SignedFile {
-  fileName: string;
-  path: string;
-  token: string;
-  signedUrl: string;
-}
-
-/**
- * Uploads one or more files straight to Supabase Storage from the browser,
- * then registers the resulting URLs with the backend. The raw file bytes
- * never pass through the Vercel serverless function, so this works for
- * songs and videos of any reasonable size (previously blocked by Vercel's
- * ~4.5MB request-body limit on /api/upload).
- */
 export async function uploadFilesDirect(
-  role: 'Dodo' | 'SO',
-  category: UploadCategory,
-  items: DirectUploadItem[]
+  section: string,
+  category: string,
+  items: UploadItemInput[],
+  onProgress?: (msg: string) => void
 ) {
-  if (items.length === 0) return;
+  if (!items.length) return null;
 
-  // Step 1: ask the server for one signed upload URL per file.
+  onProgress?.('جاري طلب روابط الرفع الآمنة...');
+
+  // 1. اطلب Signed URLs - JSON وزنه بايتات بس
   const signRes = await fetch('/api/upload/sign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      role,
+      files: items.map(i => ({
+        name: i.file.name,
+        type: i.file.type,
+        section,
+      })),
+      section,
       category,
-      files: items.map(i => ({ fileName: i.file.name, contentType: i.file.type }))
-    })
+    }),
   });
 
   if (!signRes.ok) {
-    const err = await signRes.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to get signed upload URLs');
+    const t = await signRes.text();
+    throw new Error(`Sign failed: ${t}`);
   }
 
-  const { signed }: { signed: SignedFile[] } = await signRes.json();
+  const { signed } = await signRes.json() as {
+    signed: { path: string; signedUrl: string; token: string }[]
+  };
 
-  // Step 2: upload each file directly to Supabase Storage (bypasses Vercel entirely).
-  for (let i = 0; i < items.length; i++) {
-    const { path, token } = signed[i];
-    const { error } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .uploadToSignedUrl(path, token, items[i].file);
+  onProgress?.(`جاري رفع ${items.length} ملفات مباشرة لـ Supabase...`);
 
-    if (error) {
-      throw new Error(`Failed to upload "${items[i].file.name}": ${error.message}`);
+  // 2. ارفع مباشر من المتصفح لـ Supabase (مبيعديش على فيرسل)
+  // نرفعهم واحد واحد عشان نقدر نعمل progress
+  for (let idx = 0; idx < items.length; idx++) {
+    const item = items[idx];
+    const target = signed[idx];
+    
+    onProgress?.(`رفع ${idx + 1}/${items.length}: ${item.file.name} (${(item.file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+    const uploadRes = await fetch(target.signedUrl, {
+      method: 'PUT',
+      body: item.file,
+      headers: {
+        'Content-Type': item.file.type || 'application/octet-stream',
+        'x-upsert': 'true',
+      },
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error(`فشل رفع ${item.file.name}: ${uploadRes.statusText}`);
     }
   }
 
-  // Step 3: tell the server the uploads are done so it can save metadata
-  // (this request body is tiny — just paths and text fields, no file data).
-  const first = items[0];
+  onProgress?.('جاري حفظ البيانات...');
+
+  // 3. بلغ الباك اند ان الرفع خلص عشان يسجل في Redis / DB
   const completeRes = await fetch('/api/upload/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      role,
+      role: section, // الدور القديم
+      section,
       category,
-      title: first.title,
-      description: first.description,
-      date: first.date,
-      artist: first.artist,
-      items: signed.map((s, idx) => ({ path: s.path, fileName: items[idx].file.name }))
-    })
+      title: items[0]?.title || '',
+      description: items[0]?.description || '',
+      date: items[0]?.date || new Date().toISOString().split('T')[0],
+      artist: items[0]?.artist || '',
+      files: items.map((item, idx) => ({
+        path: signed[idx].path,
+        fileName: item.file.name,
+        title: item.title,
+        artist: item.artist,
+      })),
+    }),
   });
 
   if (!completeRes.ok) {
-    const err = await completeRes.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to save uploaded file metadata');
+    const t = await completeRes.text();
+    throw new Error(`Complete failed: ${t}`);
   }
 
-  return completeRes.json();
+  const data = await completeRes.json();
+  return data; // فيه data.state و data.success
 }
