@@ -15,16 +15,10 @@ import {
 import { getDefaultDailyQuestions } from '../src/defaultQuestions.js';
 import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseMap } from '../src/types.js';
 
+const app = express();
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  }
+  process.env.SUPABASE_SECRET_KEY!
 );
 
 const STORAGE_BUCKET = 'user-media';
