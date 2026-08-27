@@ -1,6 +1,6 @@
 import express from 'express';
 import { Redis } from '@upstash/redis';
-import { put } from '@vercel/blob';
+import { createClient } from '@supabase/supabase-js';
 import {
   defaultSaeedProfile,
   defaultSohilaProfile,
@@ -16,6 +16,12 @@ import { getDefaultDailyQuestions } from '../src/defaultQuestions';
 import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseMap } from '../src/types';
 
 const app = express();
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL!,
+  process.env.SUPABASE_SECRET_KEY!
+);
+
+const STORAGE_BUCKET = 'user-media';
 
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
@@ -336,8 +342,29 @@ app.post('/api/upload', async (req, res) => {
       }
 
       // Upload to Vercel Blob - returns a permanent public URL
-      const blob = await put(storedFileName, fileBuffer, { access: 'public' });
-      const fileUrl = blob.url;
+const filePath = `${role || 'unknown'}/${category}/${storedFileName}`;
+
+const contentType =
+  typeof dataStr === 'string' && dataStr.startsWith('data:')
+    ? dataStr.match(/^data:(.+);base64,/)?.[1] || 'application/octet-stream'
+    : 'application/octet-stream';
+
+const { error: uploadError } = await supabase.storage
+  .from(STORAGE_BUCKET)
+  .upload(filePath, fileBuffer, {
+    contentType,
+    upsert: false,
+  });
+
+if (uploadError) {
+  throw uploadError;
+}
+
+const { data: publicUrlData } = supabase.storage
+  .from(STORAGE_BUCKET)
+  .getPublicUrl(filePath);
+
+const fileUrl = publicUrlData.publicUrl;
 
       if (category === 'gallery') {
         const newItem: GalleryItem = {
