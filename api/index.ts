@@ -1,5 +1,5 @@
 import express from 'express';
-import { createClient as createRedisClient } from 'redis';
+import { Redis } from '@upstash/redis';
 import { createClient } from '@supabase/supabase-js';
 import {
   defaultSaeedProfile,
@@ -11,9 +11,9 @@ import {
   defaultMemories,
   defaultVideos,
   defaultSongs
-} from '../src/dataStore';
-import { getDefaultDailyQuestions } from '../src/defaultQuestions';
-import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseMap } from '../src/types';
+} from '../src/dataStore.js';
+import { getDefaultDailyQuestions } from '../src/defaultQuestions.js';
+import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseMap } from '../src/types.js';
 
 const app = express();
 const supabase = createClient(
@@ -26,21 +26,10 @@ const STORAGE_BUCKET = 'user-media';
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-// Redis client - reads REDIS_URL automatically from environment variables
-// once the Redis integration is connected to this project in Vercel.
+// Redis client - reads UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
+// automatically from environment variables once the integration is connected in Vercel.
+const redis = Redis.fromEnv();
 const STATE_KEY = 'interaction_state';
-
-let redisClient: ReturnType<typeof createRedisClient> | null = null;
-
-async function getRedis() {
-  if (redisClient && redisClient.isOpen) {
-    return redisClient;
-  }
-  redisClient = createRedisClient({ url: process.env.REDIS_URL });
-  redisClient.on('error', (err) => console.error('Redis Client Error', err));
-  await redisClient.connect();
-  return redisClient;
-}
 
 // Persistent state structure
 interface Buzz {
@@ -200,10 +189,9 @@ function buildDefaultState(): InteractionState {
 
 async function readState(): Promise<InteractionState> {
   try {
-    const redis = await getRedis();
-    const raw = await redis.get(STATE_KEY);
+    const raw = await redis.get<InteractionState>(STATE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as InteractionState;
+      const parsed = raw as InteractionState;
       parsed.activityFeed = parsed.activityFeed || [];
       parsed.pendingBuzzes = parsed.pendingBuzzes || [];
       parsed.stickyNotes = parsed.stickyNotes || [];
@@ -233,7 +221,7 @@ async function readState(): Promise<InteractionState> {
       const originalLength = parsed.activityFeed.length;
       parsed.activityFeed = parsed.activityFeed.filter((act: any) => act.timestamp > oneDayAgo);
       if (parsed.activityFeed.length !== originalLength) {
-        await redis.set(STATE_KEY, JSON.stringify(parsed));
+        await redis.set(STATE_KEY, parsed);
       }
 
       return parsed;
@@ -243,19 +231,13 @@ async function readState(): Promise<InteractionState> {
   }
 
   const defaultState = buildDefaultState();
-  try {
-    const redis = await getRedis();
-    await redis.set(STATE_KEY, JSON.stringify(defaultState));
-  } catch (err) {
-    console.error('Error writing default state to Redis:', err);
-  }
+  await redis.set(STATE_KEY, defaultState);
   return defaultState;
 }
 
 async function writeState(state: InteractionState) {
   try {
-    const redis = await getRedis();
-    await redis.set(STATE_KEY, JSON.stringify(state));
+    await redis.set(STATE_KEY, state);
   } catch (err) {
     console.error('Error writing interaction state to Redis:', err);
   }
