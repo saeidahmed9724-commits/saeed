@@ -509,6 +509,23 @@ export default function App() {
     }
   };
 
+  // Request microphone & camera permission up front so the OS/browser
+  // permission prompt appears once, right when the person enters the app,
+  // instead of only later when they try to record a voice note.
+  const requestMediaPermissions = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      // We only needed this call to trigger the permission prompt; stop the
+      // tracks immediately so the mic/camera indicator doesn't stay active.
+      stream.getTracks().forEach((track) => track.stop());
+    } catch (err) {
+      // User denied, or device has no camera/mic — fail silently, voice
+      // notes will just re-prompt for audio only when actually used.
+      console.log('Media permission not granted:', err);
+    }
+  };
+
   // Trigger browser native notification
   const triggerNativeNotification = (title: string, body: string) => {
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -1042,7 +1059,7 @@ export default function App() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     requestNotificationPermission();
-                    toggleFullScreen();
+                    requestMediaPermissions();
                     setCurrentUserRole('Dodo');
                     localStorage.setItem('user_role', 'Dodo');
                     setShowUserSelector(false);
@@ -1077,7 +1094,7 @@ export default function App() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     requestNotificationPermission();
-                    toggleFullScreen();
+                    requestMediaPermissions();
                     setCurrentUserRole('SO');
                     localStorage.setItem('user_role', 'SO');
                     setShowUserSelector(false);
@@ -1219,7 +1236,7 @@ export default function App() {
               <button
                 onClick={() => {
                   requestNotificationPermission();
-                  toggleFullScreen();
+                  requestMediaPermissions();
                   setIsLanding(false);
                   startGlobalMusic();
                 }}
@@ -2220,49 +2237,6 @@ export default function App() {
         playsInline
       />
 
-      {/* Strict Fullscreen Enforcer Overlay */}
-      {!isFullscreen && !isLanding && !showUserSelector && (
-        <div 
-          className="fixed inset-0 z-[9999] bg-neutral-950/95 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 select-none cursor-pointer"
-          onClick={enterFullScreen}
-        >
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="max-w-md bg-white/10 dark:bg-black/40 border border-white/10 p-8 rounded-[36px] shadow-2xl flex flex-col items-center gap-6"
-            onClick={(e) => {
-              e.stopPropagation();
-              enterFullScreen();
-            }}
-          >
-            <div className="relative">
-              <div className="absolute inset-0 bg-rose-500/30 blur-2xl rounded-full animate-pulse" />
-              <Heart className="w-16 h-16 text-rose-500 relative animate-bounce" fill="currentColor" />
-            </div>
-            
-            <div className="space-y-3">
-              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-wide">
-                {lang === 'ar' ? 'وضع الشاشة الكاملة مطلوب 💕' : 'Fullscreen Mode Required 💕'}
-              </h2>
-              <p className="text-xs sm:text-sm text-neutral-300 px-4 leading-relaxed">
-                {lang === 'ar' 
-                  ? 'طلب شريكك بقاء التطبيق في وضع الشاشة الكاملة دائمًا لخلق أجواء غامرة وخالية من التشتيت.' 
-                  : 'By request of your partner, this application operates strictly in fullscreen mode for an immersive experience.'}
-              </p>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                enterFullScreen();
-              }}
-              className="w-full py-3.5 px-6 rounded-full bg-gradient-to-r from-rose-500 to-rose-gold-500 hover:from-rose-600 hover:to-rose-gold-600 text-white font-bold text-sm sm:text-base shadow-lg shadow-rose-500/20 active:scale-95 transition-all cursor-pointer animate-pulse"
-            >
-              {lang === 'ar' ? 'العودة للشاشة الكاملة 🚀' : 'Return to Fullscreen 🚀'}
-            </button>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }
