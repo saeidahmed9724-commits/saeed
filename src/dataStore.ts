@@ -1,5 +1,5 @@
-import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole } from './types';
-import { getDefaultDailyQuestions } from './defaultQuestions';
+import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole } from './types.js';
+import { getDefaultDailyQuestions } from './defaultQuestions.js';
 
 // Default Knowledge Base ("اعرفني أكتر ❤️")
 export const defaultKnowledgeBase: KnowledgeBaseMap = {

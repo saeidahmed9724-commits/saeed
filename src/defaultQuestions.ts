@@ -1,4 +1,4 @@
-import { DailyQuestion } from './types';
+import { DailyQuestion } from './types.js';
 
 const rawQuestions = [
   {
