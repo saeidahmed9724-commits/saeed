@@ -1,5 +1,5 @@
 import express from 'express';
-import { Redis } from '@upstash/redis';
+import { createClient as createRedisClient } from 'redis';
 import { createClient } from '@supabase/supabase-js';
 import {
   defaultSaeedProfile,
@@ -26,10 +26,21 @@ const STORAGE_BUCKET = 'user-media';
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
-// Redis client - reads UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN
-// automatically from environment variables once the integration is connected in Vercel.
-const redis = Redis.fromEnv();
+// Redis client - reads REDIS_URL automatically from environment variables
+// once the Redis integration is connected to this project in Vercel.
 const STATE_KEY = 'interaction_state';
+
+let redisClient: ReturnType<typeof createRedisClient> | null = null;
+
+async function getRedis() {
+  if (redisClient && redisClient.isOpen) {
+    return redisClient;
+  }
+  redisClient = createRedisClient({ url: process.env.REDIS_URL });
+  redisClient.on('error', (err) => console.error('Redis Client Error', err));
+  await redisClient.connect();
+  return redisClient;
+}
 
 // Persistent state structure
 interface Buzz {
@@ -185,13 +196,14 @@ function buildDefaultState(): InteractionState {
   };
 }
 
-// --- State read/write now backed by Upstash Redis instead of a local file ---
+// --- State read/write backed by Redis (node-redis client) instead of a local file ---
 
 async function readState(): Promise<InteractionState> {
   try {
-    const raw = await redis.get<InteractionState>(STATE_KEY);
+    const redis = await getRedis();
+    const raw = await redis.get(STATE_KEY);
     if (raw) {
-      const parsed = raw as InteractionState;
+      const parsed = JSON.parse(raw) as InteractionState;
       parsed.activityFeed = parsed.activityFeed || [];
       parsed.pendingBuzzes = parsed.pendingBuzzes || [];
       parsed.stickyNotes = parsed.stickyNotes || [];
@@ -221,7 +233,7 @@ async function readState(): Promise<InteractionState> {
       const originalLength = parsed.activityFeed.length;
       parsed.activityFeed = parsed.activityFeed.filter((act: any) => act.timestamp > oneDayAgo);
       if (parsed.activityFeed.length !== originalLength) {
-        await redis.set(STATE_KEY, parsed);
+        await redis.set(STATE_KEY, JSON.stringify(parsed));
       }
 
       return parsed;
@@ -231,13 +243,19 @@ async function readState(): Promise<InteractionState> {
   }
 
   const defaultState = buildDefaultState();
-  await redis.set(STATE_KEY, defaultState);
+  try {
+    const redis = await getRedis();
+    await redis.set(STATE_KEY, JSON.stringify(defaultState));
+  } catch (err) {
+    console.error('Error writing default state to Redis:', err);
+  }
   return defaultState;
 }
 
 async function writeState(state: InteractionState) {
   try {
-    await redis.set(STATE_KEY, state);
+    const redis = await getRedis();
+    await redis.set(STATE_KEY, JSON.stringify(state));
   } catch (err) {
     console.error('Error writing interaction state to Redis:', err);
   }
@@ -304,7 +322,7 @@ app.post('/api/shared/update', async (req, res) => {
   res.json({ success: true, state: activeState });
 });
 
-// Direct Media & Memory Upload Endpoint (now stores files in Vercel Blob, not local disk)
+// Direct Media & Memory Upload Endpoint (stores files in Supabase Storage)
 app.post('/api/upload', async (req, res) => {
   const { role, category, title, description, date, artist, location, fileData, fileName, filesBatch } = req.body;
 
@@ -341,30 +359,30 @@ app.post('/api/upload', async (req, res) => {
         fileBuffer = Buffer.from(dataStr, 'base64');
       }
 
-      // Upload to Vercel Blob - returns a permanent public URL
-const filePath = `${role || 'unknown'}/${category}/${storedFileName}`;
+      // Upload to Supabase Storage - returns a permanent public URL
+      const filePath = `${role || 'unknown'}/${category}/${storedFileName}`;
 
-const contentType =
-  typeof dataStr === 'string' && dataStr.startsWith('data:')
-    ? dataStr.match(/^data:(.+);base64,/)?.[1] || 'application/octet-stream'
-    : 'application/octet-stream';
+      const contentType =
+        typeof dataStr === 'string' && dataStr.startsWith('data:')
+          ? dataStr.match(/^data:(.+);base64,/)?.[1] || 'application/octet-stream'
+          : 'application/octet-stream';
 
-const { error: uploadError } = await supabase.storage
-  .from(STORAGE_BUCKET)
-  .upload(filePath, fileBuffer, {
-    contentType,
-    upsert: false,
-  });
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(filePath, fileBuffer, {
+          contentType,
+          upsert: false,
+        });
 
-if (uploadError) {
-  throw uploadError;
-}
+      if (uploadError) {
+        throw uploadError;
+      }
 
-const { data: publicUrlData } = supabase.storage
-  .from(STORAGE_BUCKET)
-  .getPublicUrl(filePath);
+      const { data: publicUrlData } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(filePath);
 
-const fileUrl = publicUrlData.publicUrl;
+      const fileUrl = publicUrlData.publicUrl;
 
       if (category === 'gallery') {
         const newItem: GalleryItem = {
