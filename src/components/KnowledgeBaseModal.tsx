@@ -124,6 +124,8 @@ export const KnowledgeBaseModal: React.FC<KnowledgeBaseModalProps> = ({
 }) => {
   const [kbMap, setKbMap] = useState<KnowledgeBaseMap>(DataStore.getKnowledgeBase());
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const isEditingRef = React.useRef(isEditing);
+  isEditingRef.current = isEditing;
   const [formData, setFormData] = useState<KnowledgeBaseData>({});
   const [activeCategory, setActiveCategory] = useState<string>('likes');
   
@@ -146,7 +148,7 @@ export const KnowledgeBaseModal: React.FC<KnowledgeBaseModalProps> = ({
       const loadKb = () => {
         const data = DataStore.getKnowledgeBase();
         setKbMap(data);
-        if (!isEditing) {
+        if (!isEditingRef.current) {
           setFormData(data[currentRole] || {});
         }
       };
@@ -158,7 +160,12 @@ export const KnowledgeBaseModal: React.FC<KnowledgeBaseModalProps> = ({
       window.addEventListener('datastore_synced', loadKb);
       return () => window.removeEventListener('datastore_synced', loadKb);
     }
-  }, [isOpen, currentRole, isEditing]);
+    // Intentionally NOT depending on `isEditing`: including it caused this
+    // effect to re-run every time the user entered edit mode, which
+    // immediately called setIsEditing(false) and kicked them right back
+    // out — making the profile look like it "can't be edited".
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, currentRole]);
 
   if (!isOpen) return null;
 
