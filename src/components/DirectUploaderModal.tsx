@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Music, Film, Heart, CheckCircle2, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Language, UserRole } from '../types';
 import { DataStore } from '../dataStore';
+import { uploadFilesDirect } from '../uploadService';
 
 interface DirectUploaderModalProps {
   isOpen: boolean;
@@ -57,19 +58,17 @@ export default function DirectUploaderModal({
     setUploadStatus('idle');
 
     filesArray.forEach((f) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const preview = reader.result as string;
-        setSelectedFiles((prev) => [
-          ...prev,
-          {
-            id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            file: f,
-            preview
-          }
-        ]);
-      };
-      reader.readAsDataURL(f);
+      // Object URL is only for local preview; the real file is uploaded
+      // directly to Supabase by uploadFilesDirect().
+      const preview = URL.createObjectURL(f);
+      setSelectedFiles((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          file: f,
+          preview
+        }
+      ]);
     });
   };
 
@@ -89,11 +88,18 @@ export default function DirectUploaderModal({
   };
 
   const removeFile = (idToRemove: string) => {
-    setSelectedFiles((prev) => prev.filter((item) => item.id !== idToRemove));
+    setSelectedFiles((prev) => {
+      const item = prev.find((file) => file.id === idToRemove);
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter((file) => file.id !== idToRemove);
+    });
   };
 
   const clearAllFiles = () => {
-    setSelectedFiles([]);
+    setSelectedFiles((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.preview));
+      return [];
+    });
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -109,27 +115,18 @@ export default function DirectUploaderModal({
     setErrorMessage('');
 
     try {
-      const filesBatch = selectedFiles.map((item) => ({
-        fileName: item.file.name,
-        fileData: item.preview
+      const items = selectedFiles.map((item) => ({
+        file: item.file,
+        title: category === 'song'
+          ? title.trim()
+          : (title.trim() || (selectedFiles.length === 1 ? item.file.name : '')),
+        description: description.trim(),
+        date,
+        artist: artist.trim(),
       }));
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: currentRole,
-          category,
-          title: category === 'song' ? title.trim() : (title.trim() || (selectedFiles.length === 1 ? selectedFiles[0].file.name : '')),
-          description: description.trim(),
-          date,
-          artist: artist.trim(),
-          filesBatch
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await uploadFilesDirect(currentRole, category, items);
+      if (data?.success) {
         setIsUploading(false);
         setUploadStatus('success');
 
@@ -144,6 +141,7 @@ export default function DirectUploaderModal({
 
         setTimeout(() => {
           // Reset fields and close
+          selectedFiles.forEach((item) => URL.revokeObjectURL(item.preview));
           setSelectedFiles([]);
           setTitle('');
           setDescription('');
