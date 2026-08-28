@@ -323,6 +323,7 @@ app.post('/api/shared/update', async (req, res) => {
 });
 
 // Direct Media & Memory Upload Endpoint (stores files in Supabase Storage)
+// Kept for small files / backward compatibility.
 app.post('/api/upload', async (req, res) => {
   const { role, category, title, description, date, artist, location, fileData, fileName, filesBatch } = req.body;
 
@@ -472,6 +473,146 @@ app.post('/api/upload', async (req, res) => {
   } catch (err: any) {
     console.error('Error during file upload:', err);
     return res.status(500).json({ error: 'Failed to save uploaded file(s)' });
+  }
+});
+
+// --- DIRECT-TO-SUPABASE UPLOAD FLOW (bypasses Vercel's ~4.5MB request limit) ---
+// Step 1: Frontend asks for a signed upload URL for each file (no file bytes sent here).
+app.post('/api/upload/sign', async (req, res) => {
+  const { role, category, files } = req.body;
+
+  if (!category || !Array.isArray(files) || files.length === 0) {
+    return res.status(400).json({ error: 'Missing category or files list' });
+  }
+
+  try {
+    const signedItems: Array<{ path: string; token: string; fileName: string }> = [];
+
+    for (const f of files) {
+      const timestamp = Date.now() + Math.floor(Math.random() * 1000);
+      const safeName = (f.fileName || 'file').replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `${role || 'unknown'}/${category}/${timestamp}_${safeName}`;
+
+      const { data, error } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUploadUrl(filePath);
+
+      if (error) {
+        throw error;
+      }
+
+      signedItems.push({ path: filePath, token: data.token, fileName: f.fileName });
+    }
+
+    return res.json({ success: true, items: signedItems });
+  } catch (err: any) {
+    console.error('Error creating signed upload URLs:', err);
+    return res.status(500).json({ error: 'Failed to create signed upload URLs' });
+  }
+});
+
+// Step 2: After the browser uploads each file directly to Supabase Storage using the
+// signed URL/token, it calls this endpoint with just the resulting paths + metadata,
+// so the server can save the item into the shared state (Redis) as before.
+app.post('/api/upload/complete', async (req, res) => {
+  const { role, category, title, description, date, artist, items } = req.body;
+
+  if (!category || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Missing category or completed items list' });
+  }
+
+  try {
+    const activeState = await readState();
+    const senderName = role === 'Dodo' ? 'سعيد' : 'سهيلة';
+    const createdItems: any[] = [];
+
+    items.forEach((it: { path: string; fileName?: string }, idx: number) => {
+      const timestamp = Date.now() + idx;
+      const { data: publicUrlData } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(it.path);
+      const fileUrl = publicUrlData.publicUrl;
+
+      if (category === 'gallery') {
+        const newItem: GalleryItem = {
+          id: `gal-${timestamp}`,
+          url: fileUrl,
+          date: date || new Date().toISOString().split('T')[0],
+          caption: (title ? title + ': ' : '') + (description || '')
+        };
+        activeState.galleryItems = activeState.galleryItems || [];
+        activeState.galleryItems.unshift(newItem);
+        createdItems.push(newItem);
+      } else if (category === 'song') {
+        const newItem: Song = {
+          id: `song-${timestamp}`,
+          title: title || '',
+          artist: artist || '',
+          url: fileUrl,
+          coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80'
+        };
+        activeState.songs = activeState.songs || [];
+        activeState.songs.unshift(newItem);
+        createdItems.push(newItem);
+      } else if (category === 'video') {
+        const newItem: VideoItem = {
+          id: `vid-${timestamp}`,
+          url: fileUrl,
+          title: title || (items.length > 1 ? `فيديو ${idx + 1}` : 'فيديو جديد 🎬'),
+          date: date || new Date().toISOString().split('T')[0]
+        };
+        activeState.videoItems = activeState.videoItems || [];
+        activeState.videoItems.unshift(newItem);
+        createdItems.push(newItem);
+      } else if (category === 'memory') {
+        const newItem: Memory = {
+          id: `mem-${timestamp}`,
+          title: title || 'ذكرى جديدة 💖',
+          date: date || new Date().toISOString().split('T')[0],
+          content: description || 'ذكرى رومانسية مميزة تم تسجيلها.',
+          imageUrl: fileUrl
+        };
+        activeState.memories = activeState.memories || [];
+        activeState.memories.unshift(newItem);
+        createdItems.push(newItem);
+      }
+    });
+
+    const count = items.length;
+    let actTitleAr = 'محتوى جديد 📤';
+    let actTitleEn = 'New Content Uploaded 📤';
+    let actDescAr = `قام ${senderName} برفع ${count} ملف جديد.`;
+    let actDescEn = `${role} uploaded ${count} new files.`;
+
+    if (category === 'gallery') {
+      actTitleAr = count > 1 ? `صور جديدة للمعرض (${count}) 📸` : `صورة جديدة للمعرض 📸`;
+      actTitleEn = count > 1 ? `New Gallery Photos (${count}) 📸` : `New Gallery Photo 📸`;
+      actDescAr = `قام ${senderName} برفع ${count} صورة جديدة إلى المعرض المشترك.`;
+      actDescEn = `${role} uploaded ${count} new photos to gallery.`;
+    } else if (category === 'song') {
+      actTitleAr = count > 1 ? `أغاني جديدة (${count}) 🎵` : `أغنية جديدة 🎵`;
+      actTitleEn = count > 1 ? `New Songs (${count}) 🎵` : `New Song 🎵`;
+      actDescAr = `قام ${senderName} برفع ${count} أغنية جديدة في المكتبة الموسيقية.`;
+      actDescEn = `${role} uploaded ${count} new songs.`;
+    } else if (category === 'video') {
+      actTitleAr = count > 1 ? `فيديوهات جديدة (${count}) 🎬` : `فيديو جديد 🎬`;
+      actTitleEn = count > 1 ? `New Videos (${count}) 🎬` : `New Video Reel 🎬`;
+      actDescAr = `قام ${senderName} برفع ${count} فيديو جديد في ريلز الذكريات.`;
+      actDescEn = `${role} uploaded ${count} new videos.`;
+    } else if (category === 'memory') {
+      actTitleAr = `ذكريات رومانسية جديدة 💖`;
+      actTitleEn = `New Memories 💖`;
+      actDescAr = `قام ${senderName} بإضافة ${count} ذكرى جديدة في سجل اللحظات.`;
+      actDescEn = `${role} added ${count} new romantic memories.`;
+    }
+
+    pushActivity(activeState, role || 'Dodo', 'buzz', actTitleAr, actTitleEn, actDescAr, actDescEn);
+
+    await writeState(activeState);
+    return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
+  } catch (err: any) {
+    console.error('Error completing upload:', err);
+    return res.status(500).json({ error: 'Failed to save uploaded file metadata' });
   }
 });
 

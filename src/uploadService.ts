@@ -1,97 +1,98 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Uses the PUBLIC anon key (safe to expose in the browser bundle) — this is
-// different from the SUPABASE_SECRET_KEY used on the server. Add it to your
-// Vercel project's environment variables as VITE_SUPABASE_ANON_KEY.
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string
-);
+// Public/anon key - safe to expose in the browser (different from the secret key used on the server).
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const STORAGE_BUCKET = 'user-media';
 
-export type UploadCategory = 'gallery' | 'song' | 'video' | 'memory' | 'voice';
-
-export interface DirectUploadItem {
+export interface UploadFileItem {
   file: File;
+  title?: string;
+  artist?: string;
+}
+
+export interface UploadMetadata {
   title?: string;
   description?: string;
   date?: string;
   artist?: string;
 }
 
-interface SignedFile {
-  fileName: string;
-  path: string;
-  token: string;
-  signedUrl: string;
-}
-
 /**
- * Uploads one or more files straight to Supabase Storage from the browser,
- * then registers the resulting URLs with the backend. The raw file bytes
- * never pass through the Vercel serverless function, so this works for
- * songs and videos of any reasonable size (previously blocked by Vercel's
- * ~4.5MB request-body limit on /api/upload).
+ * Uploads one or more files directly from the browser to Supabase Storage,
+ * then tells the backend (which uses Redis) to record the new items.
+ * This avoids Vercel's ~4.5MB request size limit entirely, since the file
+ * bytes never pass through the Vercel serverless function.
  */
 export async function uploadFilesDirect(
   role: 'Dodo' | 'SO',
-  category: UploadCategory,
-  items: DirectUploadItem[]
-) {
-  if (items.length === 0) return;
+  category: 'gallery' | 'song' | 'video' | 'memory',
+  items: UploadFileItem[],
+  metadata: UploadMetadata = {}
+): Promise<any> {
+  if (!items || items.length === 0) {
+    throw new Error('No files provided');
+  }
 
-  // Step 1: ask the server for one signed upload URL per file.
+  // Step 1: Ask the backend for a signed upload URL for each file.
   const signRes = await fetch('/api/upload/sign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       role,
       category,
-      files: items.map(i => ({ fileName: i.file.name, contentType: i.file.type }))
+      files: items.map((it) => ({
+        fileName: it.file.name,
+        contentType: it.file.type
+      }))
     })
   });
 
-  if (!signRes.ok) {
-    const err = await signRes.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to get signed upload URLs');
+  const signData = await signRes.json();
+  if (!signRes.ok || !signData.success) {
+    throw new Error(signData.error || 'Failed to get signed upload URL');
   }
 
-  const { signed }: { signed: SignedFile[] } = await signRes.json();
+  // Step 2: Upload each file directly to Supabase Storage using its signed token.
+  const uploadedItems: Array<{ path: string; fileName: string }> = [];
 
-  // Step 2: upload each file directly to Supabase Storage (bypasses Vercel entirely).
-  for (let i = 0; i < items.length; i++) {
-    const { path, token } = signed[i];
-    const { error } = await supabase.storage
+  for (let i = 0; i < signData.items.length; i++) {
+    const { path, token } = signData.items[i];
+    const file = items[i].file;
+
+    const { error: uploadError } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .uploadToSignedUrl(path, token, items[i].file);
+      .uploadToSignedUrl(path, token, file);
 
-    if (error) {
-      throw new Error(`Failed to upload "${items[i].file.name}": ${error.message}`);
+    if (uploadError) {
+      throw uploadError;
     }
+
+    uploadedItems.push({ path, fileName: file.name });
   }
 
-  // Step 3: tell the server the uploads are done so it can save metadata
-  // (this request body is tiny — just paths and text fields, no file data).
-  const first = items[0];
+  // Step 3: Tell the backend the uploads are done, so it can save the metadata
+  // (title, description, date, artist, public URL) into the shared state.
   const completeRes = await fetch('/api/upload/complete', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       role,
       category,
-      title: first.title,
-      description: first.description,
-      date: first.date,
-      artist: first.artist,
-      items: signed.map((s, idx) => ({ path: s.path, fileName: items[idx].file.name }))
+      title: metadata.title || '',
+      description: metadata.description || '',
+      date: metadata.date || new Date().toISOString().split('T')[0],
+      artist: metadata.artist || '',
+      items: uploadedItems
     })
   });
 
-  if (!completeRes.ok) {
-    const err = await completeRes.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to save uploaded file metadata');
+  const completeData = await completeRes.json();
+  if (!completeRes.ok || !completeData.success) {
+    throw new Error(completeData.error || 'Failed to save uploaded file metadata');
   }
 
-  return completeRes.json();
+  return completeData;
 }

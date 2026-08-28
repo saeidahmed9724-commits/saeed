@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, Image as ImageIcon, Music, Film, Heart, CheckCircle2, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Language, UserRole } from '../types';
 import { DataStore } from '../dataStore';
+import { uploadFilesDirect } from '../uploadService';
 
 interface DirectUploaderModalProps {
   isOpen: boolean;
@@ -109,51 +110,43 @@ export default function DirectUploaderModal({
     setErrorMessage('');
 
     try {
-      const filesBatch = selectedFiles.map((item) => ({
-        fileName: item.file.name,
-        fileData: item.preview
-      }));
+      const uploadTitle = category === 'song'
+        ? title.trim()
+        : (title.trim() || (selectedFiles.length === 1 ? selectedFiles[0].file.name : ''));
 
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: currentRole,
-          category,
-          title: category === 'song' ? title.trim() : (title.trim() || (selectedFiles.length === 1 ? selectedFiles[0].file.name : '')),
+      const data = await uploadFilesDirect(
+        currentRole,
+        category,
+        selectedFiles.map((item) => ({ file: item.file })),
+        {
+          title: uploadTitle,
           description: description.trim(),
           date,
-          artist: artist.trim(),
-          filesBatch
-        })
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setIsUploading(false);
-        setUploadStatus('success');
-
-        // Sync local datastore
-        if (data.state) {
-          DataStore.syncFromRemote(data.state);
+          artist: artist.trim()
         }
+      );
 
-        if (onSuccess) {
-          onSuccess();
-        }
+      setIsUploading(false);
+      setUploadStatus('success');
 
-        setTimeout(() => {
-          // Reset fields and close
-          setSelectedFiles([]);
-          setTitle('');
-          setDescription('');
-          setArtist('');
-          setUploadStatus('idle');
-          onClose();
-        }, 1200);
-      } else {
-        throw new Error(data.error || 'Upload failed');
+      // Sync local datastore
+      if (data.state) {
+        DataStore.syncFromRemote(data.state);
       }
+
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      setTimeout(() => {
+        // Reset fields and close
+        setSelectedFiles([]);
+        setTitle('');
+        setDescription('');
+        setArtist('');
+        setUploadStatus('idle');
+        onClose();
+      }, 1200);
     } catch (err: any) {
       console.error(err);
       setIsUploading(false);
