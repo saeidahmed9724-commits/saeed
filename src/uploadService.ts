@@ -18,6 +18,7 @@ export interface UploadMetadata {
   description?: string;
   date?: string;
   artist?: string;
+  location?: string;
 }
 
 /**
@@ -28,7 +29,7 @@ export interface UploadMetadata {
  */
 export async function uploadFilesDirect(
   role: 'Dodo' | 'SO',
-  category: 'gallery' | 'song' | 'video' | 'memory',
+  category: 'gallery' | 'song' | 'recording' | 'video' | 'memory',
   items: UploadFileItem[],
   metadata: UploadMetadata = {}
 ): Promise<any> {
@@ -85,6 +86,7 @@ export async function uploadFilesDirect(
       description: metadata.description || '',
       date: metadata.date || new Date().toISOString().split('T')[0],
       artist: metadata.artist || '',
+      location: metadata.location || '',
       items: uploadedItems
     })
   });

@@ -1281,6 +1281,30 @@ export class DataStore {
     });
   }
 
+  static updateGalleryItem(id: string, updates: Partial<GalleryItem>): void {
+    const items = this.getGallery();
+    const updated = items.map((item) => (item.id === id ? { ...item, ...updates } : item));
+    this.saveGallery(updated, {
+      type: 'buzz',
+      titleAr: 'تعديل صورة في المعرض ✏️',
+      titleEn: 'Edited a Gallery Photo ✏️',
+      descAr: 'تم تعديل بيانات صورة في المعرض المشترك.',
+      descEn: 'A photo in the shared gallery was edited.'
+    });
+  }
+
+  static deleteGalleryItem(id: string): void {
+    const items = this.getGallery();
+    const updated = items.filter((item) => item.id !== id);
+    this.saveGallery(updated, {
+      type: 'buzz',
+      titleAr: 'حذف صورة من المعرض 🗑️',
+      titleEn: 'Deleted a Gallery Photo 🗑️',
+      descAr: 'تم حذف صورة من المعرض المشترك.',
+      descEn: 'A photo was removed from the shared gallery.'
+    });
+  }
+
   static getVideos(): VideoItem[] {
     const stored = loadFromStorage<VideoItem[]>('video_items', defaultVideos);
     const items = (!stored || stored.length === 0) ? defaultVideos : stored;

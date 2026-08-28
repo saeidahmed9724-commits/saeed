@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon, Music, Film, Heart, CheckCircle2, AlertCircle, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Music, Film, Heart, CheckCircle2, AlertCircle, Loader2, Plus, Trash2, Mic } from 'lucide-react';
 import { Language, UserRole } from '../types';
 import { DataStore } from '../dataStore';
 import { uploadFilesDirect } from '../uploadService';
@@ -12,7 +12,7 @@ interface DirectUploaderModalProps {
   onSuccess?: () => void;
 }
 
-type UploadCategory = 'gallery' | 'song' | 'video' | 'memory';
+type UploadCategory = 'gallery' | 'song' | 'recording' | 'video' | 'memory';
 
 interface SelectedFileItem {
   id: string;
@@ -32,6 +32,7 @@ export default function DirectUploaderModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [artist, setArtist] = useState('');
+  const [location, setLocation] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -110,7 +111,7 @@ export default function DirectUploaderModal({
     setErrorMessage('');
 
     try {
-      const uploadTitle = category === 'song'
+      const uploadTitle = (category === 'song' || category === 'recording')
         ? title.trim()
         : (title.trim() || (selectedFiles.length === 1 ? selectedFiles[0].file.name : ''));
 
@@ -122,7 +123,8 @@ export default function DirectUploaderModal({
           title: uploadTitle,
           description: description.trim(),
           date,
-          artist: artist.trim()
+          artist: artist.trim(),
+          location: location.trim()
         }
       );
 
@@ -144,6 +146,7 @@ export default function DirectUploaderModal({
         setTitle('');
         setDescription('');
         setArtist('');
+        setLocation('');
         setUploadStatus('idle');
         onClose();
       }, 1200);
@@ -190,7 +193,7 @@ export default function DirectUploaderModal({
             <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">
               {lang === 'ar' ? 'تصنيف المحتوى 🏷️' : 'Content Category 🏷️'}
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
               <button
                 type="button"
                 onClick={() => setCategory('gallery')}
@@ -214,7 +217,20 @@ export default function DirectUploaderModal({
                 }`}
               >
                 <Music size={18} />
-                <span>{lang === 'ar' ? 'أغنية / صوت' : 'Song / Audio'}</span>
+                <span>{lang === 'ar' ? 'أغنية' : 'Song'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCategory('recording')}
+                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
+                  category === 'recording'
+                    ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
+                    : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                }`}
+              >
+                <Mic size={18} />
+                <span>{lang === 'ar' ? 'ريكورد صوتي' : 'Voice Recording'}</span>
               </button>
 
               <button
@@ -300,9 +316,13 @@ export default function DirectUploaderModal({
                           src={item.preview}
                           className="w-full h-full object-cover rounded-xl"
                         />
-                      ) : category === 'song' || item.file.type.startsWith('audio/') ? (
+                      ) : category === 'song' || category === 'recording' || item.file.type.startsWith('audio/') ? (
                         <div className="flex flex-col items-center justify-center text-center p-2">
-                          <Music className="text-rose-gold-500 mb-1" size={24} />
+                          {category === 'recording' ? (
+                            <Mic className="text-rose-gold-500 mb-1" size={24} />
+                          ) : (
+                            <Music className="text-rose-gold-500 mb-1" size={24} />
+                          )}
                           <span className="text-[10px] font-bold text-neutral-700 dark:text-neutral-300 line-clamp-1 w-full">
                             {item.file.name}
                           </span>
@@ -378,6 +398,8 @@ export default function DirectUploaderModal({
               <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
                 {category === 'song'
                   ? (lang === 'ar' ? 'اسم الأغنية (اختياري) 🎵' : 'Song Title (Optional) 🎵')
+                  : category === 'recording'
+                  ? (lang === 'ar' ? 'عنوان الريكورد (اختياري) 🎙️' : 'Recording Title (Optional) 🎙️')
                   : category === 'gallery'
                   ? (lang === 'ar' ? 'عنوان المجموعة / الصور (اختياري) 📸' : 'Group Title (Optional) 📸')
                   : category === 'video'
@@ -391,6 +413,8 @@ export default function DirectUploaderModal({
                 placeholder={
                   category === 'song'
                     ? 'اتركه فاضي أو اكتب اسم الأغنية'
+                    : category === 'recording'
+                    ? 'مثال: ريكورد يوم عيد ميلادك'
                     : category === 'gallery'
                     ? 'مثال: صور خروجتنا سوا'
                     : category === 'video'
@@ -413,6 +437,24 @@ export default function DirectUploaderModal({
                   placeholder="مثال: عمرو دياب / أنغام"
                   className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/60 dark:bg-neutral-800 text-sm font-medium focus:ring-2 focus:ring-rose-gold-400 outline-none"
                 />
+              </div>
+            )}
+
+            {category === 'gallery' && (
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+                  {lang === 'ar' ? 'المكان 📍' : 'Location 📍'}
+                </label>
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder={lang === 'ar' ? 'مثال: الساحل الشمالي' : 'e.g. North Coast'}
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/60 dark:bg-neutral-800 text-sm font-medium focus:ring-2 focus:ring-rose-gold-400 outline-none"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  {lang === 'ar' ? 'المكان والشهر بيتحددوا بيهم الألبوم اللي هتتجمع فيه الصورة' : 'Location and month determine which album this photo joins'}
+                </p>
               </div>
             )}
 

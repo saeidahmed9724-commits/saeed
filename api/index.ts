@@ -515,7 +515,7 @@ app.post('/api/upload/sign', async (req, res) => {
 // signed URL/token, it calls this endpoint with just the resulting paths + metadata,
 // so the server can save the item into the shared state (Redis) as before.
 app.post('/api/upload/complete', async (req, res) => {
-  const { role, category, title, description, date, artist, items } = req.body;
+  const { role, category, title, description, date, artist, location, items } = req.body;
 
   if (!category || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Missing category or completed items list' });
@@ -538,7 +538,8 @@ app.post('/api/upload/complete', async (req, res) => {
           id: `gal-${timestamp}`,
           url: fileUrl,
           date: date || new Date().toISOString().split('T')[0],
-          caption: (title ? title + ': ' : '') + (description || '')
+          caption: (title ? title + ': ' : '') + (description || ''),
+          location: location || ''
         };
         activeState.galleryItems = activeState.galleryItems || [];
         activeState.galleryItems.unshift(newItem);
@@ -553,6 +554,17 @@ app.post('/api/upload/complete', async (req, res) => {
         };
         activeState.songs = activeState.songs || [];
         activeState.songs.unshift(newItem);
+        createdItems.push(newItem);
+      } else if (category === 'recording') {
+        const newItem: VoiceMessage = {
+          id: `voice-${timestamp}`,
+          title: title || (items.length > 1 ? `ريكورد ${idx + 1}` : 'ريكورد صوتي جديد 🎙️'),
+          url: fileUrl,
+          date: date || new Date().toISOString().split('T')[0],
+          sender: role || 'Dodo'
+        };
+        activeState.voiceMessages = activeState.voiceMessages || [];
+        activeState.voiceMessages.unshift(newItem);
         createdItems.push(newItem);
       } else if (category === 'video') {
         const newItem: VideoItem = {
@@ -594,6 +606,11 @@ app.post('/api/upload/complete', async (req, res) => {
       actTitleEn = count > 1 ? `New Songs (${count}) 🎵` : `New Song 🎵`;
       actDescAr = `قام ${senderName} برفع ${count} أغنية جديدة في المكتبة الموسيقية.`;
       actDescEn = `${role} uploaded ${count} new songs.`;
+    } else if (category === 'recording') {
+      actTitleAr = count > 1 ? `تسجيلات صوتية جديدة (${count}) 🎙️` : `ريكورد صوتي جديد 🎙️`;
+      actTitleEn = count > 1 ? `New Voice Recordings (${count}) 🎙️` : `New Voice Recording 🎙️`;
+      actDescAr = `قام ${senderName} برفع ${count} تسجيل صوتي جديد.`;
+      actDescEn = `${role} uploaded ${count} new voice recordings.`;
     } else if (category === 'video') {
       actTitleAr = count > 1 ? `فيديوهات جديدة (${count}) 🎬` : `فيديو جديد 🎬`;
       actTitleEn = count > 1 ? `New Videos (${count}) 🎬` : `New Video Reel 🎬`;

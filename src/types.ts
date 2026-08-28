@@ -97,6 +97,7 @@ export interface GalleryItem {
   url: string;
   caption?: string;
   date: string;
+  location?: string;
 }
 
 export interface VideoItem {

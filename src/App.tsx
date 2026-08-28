@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Globe, Sun, Moon, Sparkles, Image as ImageIcon, MessageSquare, MessageCircle, Plus, User, HelpCircle, ArrowRight, Settings, X, Film, Music, Trophy, Maximize, Minimize, Upload, Trash2, Brain } from 'lucide-react';
+import { Heart, Globe, Sun, Moon, Sparkles, Image as ImageIcon, MessageSquare, MessageCircle, Plus, User, HelpCircle, ArrowRight, Settings, X, Film, Music, Trophy, Maximize, Minimize, Upload, Trash2, Brain, Edit3 } from 'lucide-react';
 
 import { Language, Memory, GalleryItem, Profile, Song, VideoItem, UserRole } from './types';
 import { DataStore } from './dataStore';
@@ -53,6 +53,47 @@ function formatTimeAgo(timestamp: number, lang: 'en' | 'ar') {
   return date.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' });
 }
 
+const ARABIC_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const ENGLISH_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+interface GalleryAlbum {
+  key: string;
+  location: string;
+  monthYearLabelAr: string;
+  monthYearLabelEn: string;
+  items: GalleryItem[];
+}
+
+function groupGalleryIntoAlbums(items: GalleryItem[]): GalleryAlbum[] {
+  const albumsMap = new Map<string, GalleryAlbum>();
+
+  items.forEach((item) => {
+    const location = (item.location && item.location.trim()) || 'بدون مكان';
+    const d = item.date ? new Date(item.date) : new Date();
+    const monthIndex = isNaN(d.getMonth()) ? new Date().getMonth() : d.getMonth();
+    const year = isNaN(d.getFullYear()) ? new Date().getFullYear() : d.getFullYear();
+    const key = `${location}__${year}-${monthIndex}`;
+
+    if (!albumsMap.has(key)) {
+      albumsMap.set(key, {
+        key,
+        location,
+        monthYearLabelAr: `${ARABIC_MONTHS[monthIndex]} ${year}`,
+        monthYearLabelEn: `${ENGLISH_MONTHS[monthIndex]} ${year}`,
+        items: []
+      });
+    }
+    albumsMap.get(key)!.items.push(item);
+  });
+
+  // Sort albums by most recent first
+  return Array.from(albumsMap.values()).sort((a, b) => {
+    const aDate = a.items[0]?.date || '';
+    const bDate = b.items[0]?.date || '';
+    return bDate.localeCompare(aDate);
+  });
+}
+
 export default function App() {
   // Master States
   const [lang, setLang] = useState<Language>(() => (localStorage.getItem('app_lang') as Language) || 'ar');
@@ -69,6 +110,7 @@ export default function App() {
   const [isGalleryToMemoryOpen, setIsGalleryToMemoryOpen] = useState(false);
   const [isKnowledgeBaseOpen, setIsKnowledgeBaseOpen] = useState(false);
   const [selectedGalleryItemForMemory, setSelectedGalleryItemForMemory] = useState<GalleryItem | null>(null);
+  const [editingGalleryItem, setEditingGalleryItem] = useState<GalleryItem | null>(null);
   const [brokenMemoryImageIds, setBrokenMemoryImageIds] = useState<Set<string>>(new Set());
 
   // Deep linking and highlighting states
@@ -1683,7 +1725,7 @@ export default function App() {
                   </p>
                 </div>
 
-                {/* Photos Pinterest Masonry Layout */}
+                {/* Photos organized into Albums by location + month/year */}
                 <div className="pt-2">
                   <div className="text-center mb-6">
                     <h4 className="font-serif text-lg font-bold text-neutral-800 dark:text-neutral-200">
@@ -1698,35 +1740,75 @@ export default function App() {
                       </p>
                     </div>
                   ) : (
-                    /* Pinterest style Masonry Columns */
-                    <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
-                      {shuffledGallery.map((item) => (
-                        <div key={item.id} className="break-inside-avoid rounded-2xl overflow-hidden glass p-2.5 border border-white/50 dark:border-white/10 group shadow-sm hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between">
-                          <div>
-                            <img 
-                              src={item.url} 
-                              referrerPolicy="no-referrer" 
-                              alt="" 
-                              className="w-full h-auto object-cover rounded-xl group-hover:scale-105 transition-transform duration-500" 
-                            />
-                            {item.caption && (
-                              <p className="text-xs text-center text-neutral-600 dark:text-neutral-300 mt-2 font-serif font-medium leading-snug">
-                                "{item.caption}"
-                              </p>
-                            )}
+                    <div className="space-y-10">
+                      {groupGalleryIntoAlbums(shuffledGallery).map((album) => (
+                        <div key={album.key}>
+                          {/* Album header */}
+                          <div className="mb-3 flex items-center gap-2 justify-center">
+                            <span className="text-sm font-bold text-rose-gold-600 dark:text-rose-gold-400">
+                              📍 {album.location}
+                            </span>
+                            <span className="text-xs text-neutral-400">•</span>
+                            <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                              {lang === 'ar' ? album.monthYearLabelAr : album.monthYearLabelEn}
+                            </span>
                           </div>
-                          <div className="mt-2.5 pt-2 border-t border-rose-gold-100/20 flex justify-center">
-                            <button
-                              onClick={() => {
-                                setSelectedGalleryItemForMemory(item);
-                                setIsGalleryToMemoryOpen(true);
-                              }}
-                              className="w-full py-1.5 px-2 rounded-xl bg-rose-gold-500/10 hover:bg-rose-gold-500/20 text-rose-gold-600 dark:text-rose-gold-400 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                              title={lang === 'ar' ? 'تحويل وإضافة هذه الصورة إلى الذكريات' : 'Add this photo to memories'}
-                            >
-                              <Heart size={13} className="fill-rose-gold-500/30" />
-                              <span>{lang === 'ar' ? 'إضافة للذكريات 💖' : 'Add to Memories 💖'}</span>
-                            </button>
+
+                          {/* Pinterest style Masonry Columns per album */}
+                          <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
+                            {album.items.map((item) => (
+                              <div key={item.id} className="break-inside-avoid rounded-2xl overflow-hidden glass p-2.5 border border-white/50 dark:border-white/10 group shadow-sm hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between">
+                                <div>
+                                  <img
+                                    src={item.url}
+                                    referrerPolicy="no-referrer"
+                                    alt=""
+                                    className="w-full h-auto object-cover rounded-xl group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                  {item.caption && (
+                                    <p className="text-xs text-center text-neutral-600 dark:text-neutral-300 mt-2 font-serif font-medium leading-snug">
+                                      "{item.caption}"
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="mt-2.5 pt-2 border-t border-rose-gold-100/20 flex flex-col gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedGalleryItemForMemory(item);
+                                      setIsGalleryToMemoryOpen(true);
+                                    }}
+                                    className="w-full py-1.5 px-2 rounded-xl bg-rose-gold-500/10 hover:bg-rose-gold-500/20 text-rose-gold-600 dark:text-rose-gold-400 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                                    title={lang === 'ar' ? 'تحويل وإضافة هذه الصورة إلى الذكريات' : 'Add this photo to memories'}
+                                  >
+                                    <Heart size={13} className="fill-rose-gold-500/30" />
+                                    <span>{lang === 'ar' ? 'إضافة للذكريات 💖' : 'Add to Memories 💖'}</span>
+                                  </button>
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      onClick={() => setEditingGalleryItem(item)}
+                                      className="flex-1 py-1.5 px-2 rounded-xl bg-neutral-500/10 hover:bg-neutral-500/20 text-neutral-600 dark:text-neutral-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                                      title={lang === 'ar' ? 'تعديل بيانات الصورة' : 'Edit photo details'}
+                                    >
+                                      <Edit3 size={12} />
+                                      <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(lang === 'ar' ? 'متأكد إنك عايز تمسح الصورة دي؟' : 'Are you sure you want to delete this photo?')) {
+                                          DataStore.deleteGalleryItem(item.id);
+                                          setContentTrigger((prev) => prev + 1);
+                                        }
+                                      }}
+                                      className="flex-1 py-1.5 px-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                                      title={lang === 'ar' ? 'حذف الصورة' : 'Delete photo'}
+                                    >
+                                      <Trash2 size={12} />
+                                      <span>{lang === 'ar' ? 'حذف' : 'Delete'}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
@@ -2229,6 +2311,25 @@ export default function App() {
         onSuccess={() => setContentTrigger((prev) => prev + 1)}
       />
 
+      {/* Gallery Item Edit Modal */}
+      {editingGalleryItem && (
+        <WidgetModal
+          onClose={() => setEditingGalleryItem(null)}
+          title={lang === 'ar' ? 'تعديل بيانات الصورة ✏️' : 'Edit Photo Details ✏️'}
+        >
+          <GalleryEditForm
+            item={editingGalleryItem}
+            lang={lang}
+            onSave={(updates) => {
+              DataStore.updateGalleryItem(editingGalleryItem.id, updates);
+              setContentTrigger((prev) => prev + 1);
+              setEditingGalleryItem(null);
+            }}
+            onCancel={() => setEditingGalleryItem(null)}
+          />
+        </WidgetModal>
+      )}
+
       {/* Hidden global music player video tag for maximal compatibility of webm/mp4 audio formats */}
       <video 
         ref={globalAudioRef} 
@@ -2237,6 +2338,77 @@ export default function App() {
         playsInline
       />
 
+    </div>
+  );
+}
+
+interface GalleryEditFormProps {
+  item: GalleryItem;
+  lang: Language;
+  onSave: (updates: Partial<GalleryItem>) => void;
+  onCancel: () => void;
+}
+
+function GalleryEditForm({ item, lang, onSave, onCancel }: GalleryEditFormProps) {
+  const [caption, setCaption] = useState(item.caption || '');
+  const [location, setLocation] = useState(item.location || '');
+  const [date, setDate] = useState(item.date || new Date().toISOString().split('T')[0]);
+
+  return (
+    <div className="space-y-4">
+      <img src={item.url} alt="" className="w-full h-40 object-cover rounded-2xl" />
+
+      <div>
+        <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+          {lang === 'ar' ? 'المكان 📍' : 'Location 📍'}
+        </label>
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder={lang === 'ar' ? 'مثال: الساحل الشمالي' : 'e.g. North Coast'}
+          className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/60 dark:bg-neutral-800 text-sm font-medium focus:ring-2 focus:ring-rose-gold-400 outline-none"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+          {lang === 'ar' ? 'التاريخ 📅' : 'Date 📅'}
+        </label>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/60 dark:bg-neutral-800 text-sm font-medium focus:ring-2 focus:ring-rose-gold-400 outline-none"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
+          {lang === 'ar' ? 'الوصف / التعليق 📝' : 'Caption 📝'}
+        </label>
+        <textarea
+          value={caption}
+          onChange={(e) => setCaption(e.target.value)}
+          rows={2}
+          className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-white/10 bg-white/60 dark:bg-neutral-800 text-sm font-medium focus:ring-2 focus:ring-rose-gold-400 outline-none resize-none"
+        />
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 py-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-sm font-bold cursor-pointer"
+        >
+          {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+        </button>
+        <button
+          onClick={() => onSave({ caption, location, date })}
+          className="flex-1 py-2.5 rounded-xl bg-rose-gold-500 hover:bg-rose-gold-600 text-white text-sm font-bold cursor-pointer"
+        >
+          {lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
+        </button>
+      </div>
     </div>
   );
 }
