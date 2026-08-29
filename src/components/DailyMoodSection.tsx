@@ -131,6 +131,7 @@ export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSec
 
   // ---------------- STATS ----------------
   const stats = useMemo(() => computeStats(entries, myKey, partnerKey), [entries, myKey, partnerKey]);
+  const patterns = useMemo(() => computeOurPatterns(entries, myKey, partnerKey), [entries, myKey, partnerKey]);
 
   // ---------------- CALENDAR ----------------
   const calendarCells = useMemo(() => buildCalendarCells(calendarMonth), [calendarMonth]);
@@ -309,6 +310,7 @@ export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSec
               const day = entries[cell.key];
               const mine = day?.[myKey];
               const partner = day?.[partnerKey];
+              const unlocked = !!mine; // partner's mood only visible once I've logged mine for this day
               return (
                 <button
                   key={cell.key}
@@ -321,7 +323,7 @@ export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSec
                 >
                   <span className="text-[9px] text-neutral-400">{cell.day}</span>
                   <span className="text-sm leading-none">
-                    {mine?.emoji || partner?.emoji || ''}
+                    {mine?.emoji || (unlocked ? partner?.emoji : partner ? '🔒' : '') || ''}
                   </span>
                 </button>
               );
@@ -332,7 +334,21 @@ export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSec
             <div className="rounded-2xl glass p-4 border border-white/30 dark:border-white/5 space-y-3">
               <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">{selectedDay}</span>
               <DayDetail label={myName} entry={selectedDayEntry?.[myKey]} isAr={isAr} />
-              <DayDetail label={partnerName} entry={selectedDayEntry?.[partnerKey]} isAr={isAr} />
+              {selectedDayEntry?.[myKey] ? (
+                <DayDetail label={partnerName} entry={selectedDayEntry?.[partnerKey]} isAr={isAr} />
+              ) : selectedDayEntry?.[partnerKey] ? (
+                <div className="flex items-center gap-3 opacity-70">
+                  <span className="text-2xl">🔒</span>
+                  <div>
+                    <p className="text-xs font-bold text-neutral-500 dark:text-neutral-400">{partnerName}</p>
+                    <p className="text-xs text-neutral-400">
+                      {isAr
+                        ? `سجّل مزاجك في اليوم ده الأول عشان تشوف مزاج ${partnerName}`
+                        : `Log your own mood for this day to see ${partnerName}'s`}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -367,8 +383,67 @@ export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSec
               )}
             </div>
           </div>
+
+          {patterns.hasEnoughData && (
+            <div className="rounded-2xl glass p-4 border border-white/30 dark:border-white/5">
+              <p className="font-serif font-bold text-sm text-neutral-800 dark:text-neutral-100 mb-3">
+                ✨ {isAr ? 'أنماطكم' : 'Our Patterns'}
+              </p>
+              <div className="space-y-2.5">
+                {patterns.bestWeekday && (
+                  <PatternRow
+                    emoji="❤️"
+                    text={
+                      isAr
+                        ? `أعلى متوسط ليكم يوم ${patterns.bestWeekday.labelAr} — ${patterns.bestWeekday.avg}/10`
+                        : `Your highest average day is ${patterns.bestWeekday.labelEn} — ${patterns.bestWeekday.avg}/10`
+                    }
+                  />
+                )}
+                {patterns.longestStreak > 1 && (
+                  <PatternRow
+                    emoji="🔥"
+                    text={
+                      isAr
+                        ? `أطول سلسلة أيام سجّلتوا فيها مع بعض: ${patterns.longestStreak} يوم متتالي`
+                        : `Longest streak checking in together: ${patterns.longestStreak} days in a row`
+                    }
+                  />
+                )}
+                {patterns.bestWeek && (
+                  <PatternRow
+                    emoji="📈"
+                    text={
+                      isAr
+                        ? `أفضل أسبوع ليكم: ${patterns.bestWeek.start} إلى ${patterns.bestWeek.end} (متوسط ${patterns.bestWeek.avg}/10)`
+                        : `Your best week: ${patterns.bestWeek.start} to ${patterns.bestWeek.end} (avg ${patterns.bestWeek.avg}/10)`
+                    }
+                  />
+                )}
+                {patterns.notesCount > 0 && (
+                  <PatternRow
+                    emoji="💬"
+                    text={
+                      isAr
+                        ? `كتبتوا ملاحظات في ${patterns.notesCount} يوم من أيام التقييم`
+                        : `You wrote notes on ${patterns.notesCount} of your check-in days`
+                    }
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function PatternRow({ emoji, text }: { emoji: string; text: string }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="text-base leading-none">{emoji}</span>
+      <p className="text-sm text-neutral-700 dark:text-neutral-200 leading-snug">{text}</p>
     </div>
   );
 }
@@ -546,6 +621,103 @@ function computePersonStats(entries: DailyMoodEntries, key: UserRole): PersonSta
     mostFrequentMood,
     daysCount: dates.length
   };
+}
+
+interface OurPatterns {
+  hasEnoughData: boolean;
+  bestWeekday: { labelAr: string; labelEn: string; avg: number } | null;
+  longestStreak: number;
+  bestWeek: { start: string; end: string; avg: number } | null;
+  notesCount: number;
+}
+
+const WEEKDAY_LABELS = [
+  { ar: 'الأحد', en: 'Sunday' },
+  { ar: 'الإثنين', en: 'Monday' },
+  { ar: 'الثلاثاء', en: 'Tuesday' },
+  { ar: 'الأربعاء', en: 'Wednesday' },
+  { ar: 'الخميس', en: 'Thursday' },
+  { ar: 'الجمعة', en: 'Friday' },
+  { ar: 'السبت', en: 'Saturday' }
+];
+
+function computeOurPatterns(entries: DailyMoodEntries, myKey: UserRole, partnerKey: UserRole): OurPatterns {
+  const sharedDates = Object.keys(entries)
+    .filter((d) => entries[d][myKey] && entries[d][partnerKey])
+    .sort();
+
+  if (sharedDates.length < 5) {
+    return { hasEnoughData: false, bestWeekday: null, longestStreak: 0, bestWeek: null, notesCount: 0 };
+  }
+
+  // Best weekday (average combined rating grouped by day of week)
+  const weekdaySum: number[] = [0, 0, 0, 0, 0, 0, 0];
+  const weekdayCount: number[] = [0, 0, 0, 0, 0, 0, 0];
+  sharedDates.forEach((d) => {
+    const [y, m, day] = d.split('-').map(Number);
+    const weekday = new Date(y, m - 1, day).getDay();
+    const combined = (entries[d][myKey]!.rating + entries[d][partnerKey]!.rating) / 2;
+    weekdaySum[weekday] += combined;
+    weekdayCount[weekday]++;
+  });
+  let bestWeekdayIdx = -1;
+  let bestWeekdayAvg = -1;
+  weekdaySum.forEach((sum, idx) => {
+    if (weekdayCount[idx] === 0) return;
+    const avg = sum / weekdayCount[idx];
+    if (avg > bestWeekdayAvg) {
+      bestWeekdayAvg = avg;
+      bestWeekdayIdx = idx;
+    }
+  });
+  const bestWeekday =
+    bestWeekdayIdx >= 0
+      ? { labelAr: WEEKDAY_LABELS[bestWeekdayIdx].ar, labelEn: WEEKDAY_LABELS[bestWeekdayIdx].en, avg: round1(bestWeekdayAvg) }
+      : null;
+
+  // Longest streak of consecutive shared days
+  let longestStreak = 1;
+  let currentStreak = 1;
+  for (let i = 1; i < sharedDates.length; i++) {
+    const prev = new Date(sharedDates[i - 1]);
+    const curr = new Date(sharedDates[i]);
+    const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86400000);
+    if (diffDays === 1) {
+      currentStreak++;
+      longestStreak = Math.max(longestStreak, currentStreak);
+    } else {
+      currentStreak = 1;
+    }
+  }
+
+  // Best 7-day rolling window
+  let bestWeek: { start: string; end: string; avg: number } | null = null;
+  if (sharedDates.length >= 3) {
+    const dateToCombined: { [d: string]: number } = {};
+    sharedDates.forEach((d) => {
+      dateToCombined[d] = (entries[d][myKey]!.rating + entries[d][partnerKey]!.rating) / 2;
+    });
+    let bestSum = -1;
+    for (let i = 0; i < sharedDates.length; i++) {
+      const windowStart = new Date(sharedDates[i]);
+      const windowEnd = new Date(windowStart);
+      windowEnd.setDate(windowEnd.getDate() + 6);
+      const windowDates = sharedDates.filter((d) => {
+        const dt = new Date(d);
+        return dt >= windowStart && dt <= windowEnd;
+      });
+      if (windowDates.length < 3) continue;
+      const sum = windowDates.reduce((acc, d) => acc + dateToCombined[d], 0) / windowDates.length;
+      if (sum > bestSum) {
+        bestSum = sum;
+        bestWeek = { start: windowDates[0], end: windowDates[windowDates.length - 1], avg: round1(sum) };
+      }
+    }
+  }
+
+  const notesCount = sharedDates.filter((d) => entries[d][myKey]!.note || entries[d][partnerKey]!.note).length;
+
+  return { hasEnoughData: true, bestWeekday, longestStreak, bestWeek, notesCount };
 }
 
 function round1(n: number): number {
