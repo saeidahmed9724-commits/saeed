@@ -99,6 +99,22 @@ interface UserStatus {
   choosing: boolean;
 }
 
+// --- DAILY MOOD TRACKER ---
+interface DailyMoodEntry {
+  moodId: string;
+  emoji: string;
+  labelAr: string;
+  labelEn: string;
+  rating: number; // 1-10
+  note?: string;
+  timestamp: number;
+}
+
+interface DailyMoodDay {
+  Dodo?: DailyMoodEntry;
+  SO?: DailyMoodEntry;
+}
+
 interface InteractionState {
   dodoMood: string;
   soMood: string;
@@ -134,6 +150,7 @@ interface InteractionState {
   quizQuestions?: QuizQuestion[];
   voiceMessages?: VoiceMessage[];
   dateActivities?: DateActivity[];
+  dailyMoodEntries?: { [date: string]: DailyMoodDay }; // key = 'YYYY-MM-DD'
 }
 
 function buildDefaultState(): InteractionState {
@@ -192,7 +209,8 @@ function buildDefaultState(): InteractionState {
     dailyQuestions: getDefaultDailyQuestions(),
     quotes: [],
     quizQuestions: [],
-    voiceMessages: []
+    voiceMessages: [],
+    dailyMoodEntries: {}
   };
 }
 
@@ -227,6 +245,7 @@ async function readState(): Promise<InteractionState> {
       if (!parsed.quotes) parsed.quotes = [];
       if (!parsed.quizQuestions) parsed.quizQuestions = [];
       if (!parsed.voiceMessages) parsed.voiceMessages = [];
+      if (!parsed.dailyMoodEntries) parsed.dailyMoodEntries = {};
 
       // Auto-clear activities older than 24 hours
       const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -840,6 +859,73 @@ app.post('/api/interaction-state/quiz-answer', async (req, res) => {
 
   await writeState(activeState);
   res.json({ success: true, state: activeState });
+});
+
+// Submit / update today's (or any date's) mood check-in
+app.post('/api/interaction-state/daily-mood', async (req, res) => {
+  const { role, date, moodId, emoji, labelAr, labelEn, rating, note } = req.body;
+  if (!role || !date || !moodId || !emoji || rating === undefined) {
+    return res.status(400).json({ error: 'role, date, moodId, emoji and rating are required' });
+  }
+  const numericRating = Number(rating);
+  if (Number.isNaN(numericRating) || numericRating < 1 || numericRating > 10) {
+    return res.status(400).json({ error: 'rating must be a number between 1 and 10' });
+  }
+
+  const activeState = await readState();
+  activeState.dailyMoodEntries = activeState.dailyMoodEntries || {};
+  if (!activeState.dailyMoodEntries[date]) {
+    activeState.dailyMoodEntries[date] = {};
+  }
+
+  const dayEntry = activeState.dailyMoodEntries[date];
+  const wasAlreadySet = role === 'Dodo' ? !!dayEntry.Dodo : !!dayEntry.SO;
+
+  const entry: DailyMoodEntry = {
+    moodId,
+    emoji,
+    labelAr: labelAr || '',
+    labelEn: labelEn || '',
+    rating: numericRating,
+    note: note ? String(note).slice(0, 500) : undefined,
+    timestamp: Date.now()
+  };
+
+  if (role === 'Dodo') {
+    dayEntry.Dodo = entry;
+  } else if (role === 'SO') {
+    dayEntry.SO = entry;
+  } else {
+    return res.status(400).json({ error: 'role must be Dodo or SO' });
+  }
+
+  const partnerNameAr = role === 'Dodo' ? 'سعيد (دودي)' : 'سهيلة (سو)';
+  const partnerNameEn = role === 'Dodo' ? 'Saeed (Dodo)' : 'Sohila (SO)';
+
+  if (dayEntry.Dodo && dayEntry.SO && !wasAlreadySet) {
+    pushActivity(
+      activeState,
+      role,
+      'mood',
+      'اكتمل تقييم مزاج اليوم 💞',
+      "Today's Mood Check-in Complete 💞",
+      `أنت و${partnerNameAr === 'سعيد (دودي)' ? 'سهيلة' : 'سعيد'} قيّمتوا مزاجكم النهارده!`,
+      `You and your partner both checked in your mood today!`
+    );
+  } else if (!wasAlreadySet) {
+    pushActivity(
+      activeState,
+      role,
+      'mood',
+      'تقييم مزاج جديد 💭',
+      'New Mood Check-in 💭',
+      `قام ${partnerNameAr} بتسجيل تقييم مزاجه اليوم: "${entry.labelAr}" (${entry.rating}/10)`,
+      `Partner ${partnerNameEn} logged their mood today: "${entry.labelEn}" (${entry.rating}/10)`
+    );
+  }
+
+  await writeState(activeState);
+  res.json({ success: true, dayEntry: activeState.dailyMoodEntries[date], state: activeState });
 });
 
 // Log a custom action / activity (wheel spin, game score, envelope open)

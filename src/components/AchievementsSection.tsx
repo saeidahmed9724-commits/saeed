@@ -109,6 +109,46 @@ const ACHIEVEMENTS_LIST: AchievementItem[] = [
     checkUnlocked: () => {
       return DataStore.getSongs().length > 0;
     }
+  },
+  {
+    id: 'ach-mood-first',
+    titleAr: 'أول تقييم مزاج 💭',
+    titleEn: 'First Mood Check-in 💭',
+    descAr: 'سجّل مزاجك لأول مرة في قسم مزاج اليوم.',
+    descEn: 'Log your mood for the first time in the Daily Mood section.',
+    emoji: '🥰',
+    checkUnlocked: (state) => {
+      return !!(state && state.dailyMoodEntries && Object.keys(state.dailyMoodEntries).length > 0);
+    }
+  },
+  {
+    id: 'ach-mood-week',
+    titleAr: '7 أيام مزاج متتالية 📅',
+    titleEn: '7-Day Mood Streak 📅',
+    descAr: 'سجّلوا مزاجكم مع بعض لمدة 7 أيام.',
+    descEn: 'Check in your mood together for 7 days.',
+    emoji: '🏆',
+    checkUnlocked: (state) => {
+      if (!state || !state.dailyMoodEntries) return false;
+      const sharedDays = Object.values(state.dailyMoodEntries).filter(
+        (d: any) => d && d.Dodo && d.SO
+      );
+      return sharedDays.length >= 7;
+    }
+  },
+  {
+    id: 'ach-mood-perfect-day',
+    titleAr: 'يوم مثالي معًا 💯',
+    titleEn: 'Perfect Day Together 💯',
+    descAr: 'يوم قيّمتوا فيه مزاجكم 10/10 مع بعض.',
+    descEn: 'A day where you both rated your mood 10/10.',
+    emoji: '✨',
+    checkUnlocked: (state) => {
+      if (!state || !state.dailyMoodEntries) return false;
+      return Object.values(state.dailyMoodEntries).some(
+        (d: any) => d && d.Dodo?.rating === 10 && d.SO?.rating === 10
+      );
+    }
   }
 ];
 
