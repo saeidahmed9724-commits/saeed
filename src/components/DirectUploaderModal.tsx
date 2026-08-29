@@ -193,11 +193,11 @@ export default function DirectUploaderModal({
             <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-2">
               {lang === 'ar' ? 'تصنيف المحتوى 🏷️' : 'Content Category 🏷️'}
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               <button
                 type="button"
                 onClick={() => setCategory('gallery')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-xs font-bold transition-all gap-2 ${
                   category === 'gallery'
                     ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
                     : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
@@ -210,7 +210,7 @@ export default function DirectUploaderModal({
               <button
                 type="button"
                 onClick={() => setCategory('song')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-xs font-bold transition-all gap-2 ${
                   category === 'song'
                     ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
                     : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
@@ -223,7 +223,7 @@ export default function DirectUploaderModal({
               <button
                 type="button"
                 onClick={() => setCategory('recording')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-xs font-bold transition-all gap-2 ${
                   category === 'recording'
                     ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
                     : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
@@ -236,7 +236,7 @@ export default function DirectUploaderModal({
               <button
                 type="button"
                 onClick={() => setCategory('video')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-xs font-bold transition-all gap-2 ${
                   category === 'video'
                     ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
                     : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'
@@ -249,7 +249,7 @@ export default function DirectUploaderModal({
               <button
                 type="button"
                 onClick={() => setCategory('memory')}
-                className={`flex flex-col items-center justify-center p-3 rounded-2xl border text-xs font-bold transition-all gap-1.5 ${
+                className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 text-xs font-bold transition-all gap-2 ${
                   category === 'memory'
                     ? 'border-rose-gold-500 bg-rose-gold-50 dark:bg-rose-gold-950/40 text-rose-gold-600 dark:text-rose-gold-300 shadow-xs ring-2 ring-rose-gold-500/20'
                     : 'border-neutral-200 dark:border-white/10 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800'

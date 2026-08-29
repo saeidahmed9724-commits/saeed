@@ -79,31 +79,33 @@
 
 /* Sleek Luxury Glassmorphism and Backdrop Blur */
 .glass {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.15);
 }
 
 .dark .glass {
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(23, 23, 23, 0.55);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.5);
 }
 
 .glass-nav {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 .dark .glass-nav {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(20, 20, 20, 0.7);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Parallax zoom effect */

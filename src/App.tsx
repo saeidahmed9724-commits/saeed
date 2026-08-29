@@ -985,70 +985,72 @@ export default function App() {
       <BirthdayConfetti active={isBirthdayMode || forceBirthdayPreview || showConfetti} />
 
       {/* LANGUAGE & MANUAL THEME CONTROL BAR */}
-      <div className="fixed top-4 right-4 left-4 z-40 flex justify-between items-center px-4 py-2.5 rounded-full glass border border-white/40 dark:border-white/5 shadow-xs max-w-md mx-auto">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleLangToggle}
-            className="flex items-center gap-1 text-[11px] font-bold text-rose-gold-500 dark:text-rose-gold-300 uppercase tracking-widest font-serif"
-          >
-            <Globe size={13} />
-            {t.languageToggle}
-          </button>
+      <div className="fixed top-4 right-4 left-4 z-40 max-w-md mx-auto">
+        <div className="flex justify-between items-center gap-2 px-3 py-2 rounded-2xl bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.25)]">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleLangToggle}
+              className="flex items-center gap-1.5 text-[11px] font-bold text-rose-gold-600 dark:text-rose-gold-300 uppercase tracking-wide font-serif px-2.5 py-1.5 rounded-xl hover:bg-rose-gold-50 dark:hover:bg-rose-gold-950/40 transition-colors cursor-pointer"
+            >
+              <Globe size={14} />
+              {t.languageToggle}
+            </button>
 
-          <button
-            onClick={() => setIsDirectUploadOpen(true)}
-            className="flex items-center gap-1 text-[10px] font-bold text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/60 hover:bg-rose-gold-100 px-2.5 py-1 rounded-full border border-rose-gold-300/40 transition-all cursor-pointer shadow-2xs"
-            title={lang === 'ar' ? 'رفع صور وأغاني وفيديوهات مباشرة' : 'Upload Photos, Songs & Videos'}
-          >
-            <Upload size={12} />
-            <span>{lang === 'ar' ? 'رفع' : 'Upload'}</span>
-          </button>
-        </div>
+            <button
+              onClick={() => setIsDirectUploadOpen(true)}
+              className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-rose-gold-500 hover:bg-rose-gold-600 px-3 py-1.5 rounded-xl transition-all cursor-pointer shadow-sm shadow-rose-gold-500/30"
+              title={lang === 'ar' ? 'رفع صور وأغاني وفيديوهات مباشرة' : 'Upload Photos, Songs & Videos'}
+            >
+              <Upload size={13} />
+              <span>{lang === 'ar' ? 'رفع' : 'Upload'}</span>
+            </button>
+          </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              setIsAutoTheme(false);
-              setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
-            }}
-            className="text-rose-gold-500 hover:scale-110 transition-transform p-1.5 rounded-full"
-          >
-            {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => {
+                setIsAutoTheme(false);
+                setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+              }}
+              className="text-neutral-500 dark:text-neutral-300 hover:text-rose-gold-500 hover:bg-rose-gold-50 dark:hover:bg-rose-gold-950/40 transition-colors p-2 rounded-xl cursor-pointer"
+            >
+              {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+            </button>
 
-          <button
-            onClick={enterFullScreen}
-            className="text-rose-gold-500 hover:scale-110 transition-transform p-1.5 rounded-full relative"
-            title={lang === 'ar' ? 'وضع الشاشة الكاملة مفعّل' : 'Fullscreen Mode Active'}
-          >
-            <Maximize size={15} />
-            {isFullscreen && (
-              <span className="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-            )}
-          </button>
+            <button
+              onClick={enterFullScreen}
+              className="text-neutral-500 dark:text-neutral-300 hover:text-rose-gold-500 hover:bg-rose-gold-50 dark:hover:bg-rose-gold-950/40 transition-colors p-2 rounded-xl relative cursor-pointer"
+              title={lang === 'ar' ? 'وضع الشاشة الكاملة مفعّل' : 'Fullscreen Mode Active'}
+            >
+              <Maximize size={15} />
+              {isFullscreen && (
+                <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+              )}
+            </button>
 
-          <button
-            onClick={() => setIsAutoTheme(!isAutoTheme)}
-            className={`text-[10px] font-extrabold px-3 py-1.5 rounded-lg transition-all uppercase tracking-wider border cursor-pointer ${
-              isAutoTheme
-                ? 'bg-rose-gold-500 text-white border-rose-gold-400/40 shadow-sm shadow-rose-gold-500/20 hover:bg-rose-gold-600'
-                : 'bg-neutral-100 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-400 border-neutral-200/60 dark:border-neutral-700/60 hover:bg-neutral-200'
-            }`}
-          >
-            {isAutoTheme ? 'AUTO TIME' : 'MANUAL'}
-          </button>
+            <button
+              onClick={() => setIsAutoTheme(!isAutoTheme)}
+              className={`text-[10px] font-extrabold px-2.5 py-1.5 rounded-xl transition-all uppercase tracking-wide cursor-pointer ${
+                isAutoTheme
+                  ? 'bg-rose-gold-500 text-white shadow-sm shadow-rose-gold-500/30 hover:bg-rose-gold-600'
+                  : 'bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-white/20'
+              }`}
+            >
+              {isAutoTheme ? 'AUTO' : 'MANUAL'}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* --- BIRTHDAY BANNER --- */}
       {(isBirthdayMode || forceBirthdayPreview) && (
-        <div className="absolute top-16 left-4 right-4 z-40 max-w-sm mx-auto text-center">
-          <div className="p-3 rounded-2xl bg-linear-to-r from-purple-500/20 via-pink-500/20 to-amber-500/20 border border-amber-300 dark:border-amber-900 shadow-lg backdrop-blur-md animate-pulse">
-            <Sparkles className="text-amber-500 mx-auto mb-1 animate-spin duration-5000" size={18} />
-            <h3 className="font-serif text-xs font-bold text-neutral-900 dark:text-neutral-50">
+        <div className="absolute top-20 left-4 right-4 z-40 max-w-sm mx-auto text-center">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/15 via-rose-gold-500/15 to-amber-500/15 border border-rose-gold-200 dark:border-rose-gold-900/40 shadow-lg backdrop-blur-md">
+            <Sparkles className="text-rose-gold-500 mx-auto mb-1.5 animate-spin duration-5000" size={18} />
+            <h3 className="font-serif text-sm font-bold text-neutral-900 dark:text-neutral-50">
               {t.birthdayModeActive}
             </h3>
-            <p className="text-[10px] text-rose-gold-500 dark:text-rose-gold-300 font-bold mt-0.5">
+            <p className="text-[11px] text-rose-gold-600 dark:text-rose-gold-300 font-bold mt-1">
               {t.happyBirthday} ({birthdayName || 'Saeed & Sohila'})
             </p>
           </div>
@@ -1757,56 +1759,54 @@ export default function App() {
                           {/* Pinterest style Masonry Columns per album */}
                           <div className="columns-2 sm:columns-3 lg:columns-4 gap-4 space-y-4">
                             {album.items.map((item) => (
-                              <div key={item.id} className="break-inside-avoid rounded-2xl overflow-hidden glass p-2.5 border border-white/50 dark:border-white/10 group shadow-sm hover:scale-[1.02] transition-all duration-300 flex flex-col justify-between">
-                                <div>
-                                  <img
-                                    src={item.url}
-                                    referrerPolicy="no-referrer"
-                                    alt=""
-                                    className="w-full h-auto object-cover rounded-xl group-hover:scale-105 transition-transform duration-500"
-                                  />
-                                  {item.caption && (
-                                    <p className="text-xs text-center text-neutral-600 dark:text-neutral-300 mt-2 font-serif font-medium leading-snug">
-                                      "{item.caption}"
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="mt-2.5 pt-2 border-t border-rose-gold-100/20 flex flex-col gap-1.5">
+                              <div key={item.id} className="relative break-inside-avoid rounded-2xl overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-white/10 group shadow-sm hover:shadow-lg transition-all duration-300">
+                                <img
+                                  src={item.url}
+                                  referrerPolicy="no-referrer"
+                                  alt=""
+                                  className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+
+                                {/* Icon action overlay - appears on hover, keeps the card visually clean */}
+                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                   <button
                                     onClick={() => {
                                       setSelectedGalleryItemForMemory(item);
                                       setIsGalleryToMemoryOpen(true);
                                     }}
-                                    className="w-full py-1.5 px-2 rounded-xl bg-rose-gold-500/10 hover:bg-rose-gold-500/20 text-rose-gold-600 dark:text-rose-gold-400 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                                    title={lang === 'ar' ? 'تحويل وإضافة هذه الصورة إلى الذكريات' : 'Add this photo to memories'}
+                                    className="w-8 h-8 rounded-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm shadow-sm text-rose-gold-600 dark:text-rose-gold-400 flex items-center justify-center hover:bg-rose-gold-500 hover:text-white transition-colors cursor-pointer"
+                                    title={lang === 'ar' ? 'إضافة للذكريات' : 'Add to memories'}
                                   >
-                                    <Heart size={13} className="fill-rose-gold-500/30" />
-                                    <span>{lang === 'ar' ? 'إضافة للذكريات 💖' : 'Add to Memories 💖'}</span>
+                                    <Heart size={14} />
                                   </button>
-                                  <div className="flex gap-1.5">
-                                    <button
-                                      onClick={() => setEditingGalleryItem(item)}
-                                      className="flex-1 py-1.5 px-2 rounded-xl bg-neutral-500/10 hover:bg-neutral-500/20 text-neutral-600 dark:text-neutral-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
-                                      title={lang === 'ar' ? 'تعديل بيانات الصورة' : 'Edit photo details'}
-                                    >
-                                      <Edit3 size={12} />
-                                      <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        if (window.confirm(lang === 'ar' ? 'متأكد إنك عايز تمسح الصورة دي؟' : 'Are you sure you want to delete this photo?')) {
-                                          DataStore.deleteGalleryItem(item.id);
-                                          setContentTrigger((prev) => prev + 1);
-                                        }
-                                      }}
-                                      className="flex-1 py-1.5 px-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
-                                      title={lang === 'ar' ? 'حذف الصورة' : 'Delete photo'}
-                                    >
-                                      <Trash2 size={12} />
-                                      <span>{lang === 'ar' ? 'حذف' : 'Delete'}</span>
-                                    </button>
-                                  </div>
+                                  <button
+                                    onClick={() => setEditingGalleryItem(item)}
+                                    className="w-8 h-8 rounded-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm shadow-sm text-neutral-600 dark:text-neutral-300 flex items-center justify-center hover:bg-neutral-700 hover:text-white transition-colors cursor-pointer"
+                                    title={lang === 'ar' ? 'تعديل' : 'Edit'}
+                                  >
+                                    <Edit3 size={13} />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      if (window.confirm(lang === 'ar' ? 'متأكد إنك عايز تمسح الصورة دي؟' : 'Are you sure you want to delete this photo?')) {
+                                        DataStore.deleteGalleryItem(item.id);
+                                        setContentTrigger((prev) => prev + 1);
+                                      }
+                                    }}
+                                    className="w-8 h-8 rounded-full bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm shadow-sm text-red-600 dark:text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors cursor-pointer"
+                                    title={lang === 'ar' ? 'حذف' : 'Delete'}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
                                 </div>
+
+                                {item.caption && (
+                                  <div className="p-2.5">
+                                    <p className="text-xs text-center text-neutral-600 dark:text-neutral-300 font-serif font-medium leading-snug">
+                                      "{item.caption}"
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -2201,52 +2201,52 @@ export default function App() {
 
             {/* FLOATING GLASS NAVIGATION BAR */}
             <div className="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-40 w-full max-w-lg px-2 pointer-events-none">
-              <div className="w-full glass-nav rounded-3xl py-2 px-1.5 flex justify-between items-center shadow-2xl border border-white/50 dark:border-white/10 backdrop-blur-lg pointer-events-auto overflow-x-auto custom-scrollbar">
+              <div className="w-full bg-white/80 dark:bg-neutral-900/80 backdrop-blur-xl rounded-3xl py-2 px-1.5 flex justify-between items-center shadow-[0_10px_40px_-10px_rgba(0,0,0,0.35)] border border-white/50 dark:border-white/10 pointer-events-auto overflow-x-auto custom-scrollbar">
                 
                 {/* Home */}
                 <button
                   onClick={() => setActiveTab('home')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1 transition-all cursor-pointer ${
-                    activeTab === 'home' ? 'text-rose-gold-500 scale-105 font-bold' : 'text-neutral-400 dark:text-neutral-400 hover:text-neutral-700'
+                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer ${
+                    activeTab === 'home' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
                   }`}
                 >
-                  <Globe size={22} />
+                  <Globe size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.home}</span>
                 </button>
 
                 {/* Chat */}
                 <button
                   onClick={() => setActiveTab('chat')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1 transition-all cursor-pointer relative ${
-                    activeTab === 'chat' ? 'text-rose-gold-500 scale-105 font-bold' : 'text-neutral-400 dark:text-neutral-400 hover:text-neutral-700'
+                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer relative ${
+                    activeTab === 'chat' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
                   }`}
                 >
-                  <MessageSquare size={22} />
+                  <MessageSquare size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.chat || (lang === 'ar' ? 'الشات' : 'Chat')}</span>
                   {liveState?.chatMessages?.length > 0 && activeTab !== 'chat' && (
-                    <span className="absolute top-0.5 right-2 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                    <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-rose-gold-500 animate-ping" />
                   )}
                 </button>
 
                 {/* Memories */}
                 <button
                   onClick={() => setActiveTab('memories')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1 transition-all cursor-pointer ${
-                    activeTab === 'memories' ? 'text-rose-gold-500 scale-105 font-bold' : 'text-neutral-400 dark:text-neutral-400 hover:text-neutral-700'
+                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer ${
+                    activeTab === 'memories' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
                   }`}
                 >
-                  <Sparkles size={22} />
+                  <Sparkles size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.memories}</span>
                 </button>
 
                 {/* Reels */}
                 <button
                   onClick={() => setActiveTab('reels')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1 transition-all cursor-pointer ${
-                    activeTab === 'reels' ? 'text-rose-gold-500 scale-105 font-bold' : 'text-neutral-400 dark:text-neutral-400 hover:text-neutral-700'
+                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer ${
+                    activeTab === 'reels' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
                   }`}
                 >
-                  <Film size={22} />
+                  <Film size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.reels}</span>
                 </button>
 
@@ -2255,7 +2255,7 @@ export default function App() {
                   <div className="absolute inset-0 bg-rose-gold-400/20 rounded-full animate-ping pointer-events-none" />
                   <button
                     onClick={() => setIsDirectUploadOpen(true)}
-                    className="w-11 h-11 rounded-full bg-rose-gold-500 text-white flex items-center justify-center shadow-md border-2 border-white dark:border-neutral-900 transition-transform active:scale-95 cursor-pointer hover:bg-rose-gold-600"
+                    className="w-11 h-11 rounded-full bg-rose-gold-500 text-white flex items-center justify-center shadow-md shadow-rose-gold-500/40 border-2 border-white dark:border-neutral-900 transition-transform active:scale-95 cursor-pointer hover:bg-rose-gold-600"
                     title={lang === 'ar' ? 'رفع صور، أغاني، أو ذكريات 📤' : 'Upload Media & Memories 📤'}
                   >
                     <Upload size={20} className="stroke-[2.5]" />
@@ -2265,33 +2265,33 @@ export default function App() {
                 {/* Gallery */}
                 <button
                   onClick={() => setActiveTab('gallery')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1 transition-all cursor-pointer ${
-                    activeTab === 'gallery' ? 'text-rose-gold-500 scale-105 font-bold' : 'text-neutral-400 dark:text-neutral-400 hover:text-neutral-700'
+                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer ${
+                    activeTab === 'gallery' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
                   }`}
                 >
-                  <ImageIcon size={22} />
+                  <ImageIcon size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.gallery}</span>
                 </button>
 
                 {/* Music */}
                 <button
                   onClick={() => setActiveTab('music')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1 transition-all cursor-pointer ${
-                    activeTab === 'music' ? 'text-rose-gold-500 scale-105 font-bold' : 'text-neutral-400 dark:text-neutral-400 hover:text-neutral-700'
+                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer ${
+                    activeTab === 'music' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
                   }`}
                 >
-                  <Music size={22} />
+                  <Music size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{lang === 'ar' ? 'الموسيقى' : 'Music'}</span>
                 </button>
 
                 {/* Profile */}
                 <button
                   onClick={() => setActiveTab('profile')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1 transition-all cursor-pointer ${
-                    activeTab === 'profile' ? 'text-rose-gold-500 scale-105 font-bold' : 'text-neutral-400 dark:text-neutral-400 hover:text-neutral-700'
+                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer ${
+                    activeTab === 'profile' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
                   }`}
                 >
-                  <User size={22} />
+                  <User size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.profile}</span>
                 </button>
 
@@ -2421,26 +2421,29 @@ interface WidgetModalProps {
 
 function WidgetModal({ onClose, title, children }: WidgetModalProps) {
   return (
-    <div className="fixed inset-0 bg-neutral-950/70 backdrop-blur-xl z-50 flex items-center justify-center p-4 animate-fade-in">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+    <div className="fixed inset-0 bg-neutral-950/60 backdrop-blur-lg z-50 flex items-center justify-center p-4 animate-fade-in">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        transition={{ type: "spring", duration: 0.5 }}
-        className="bg-cream-50/95 dark:bg-neutral-950/95 w-full max-w-md rounded-[32px] border border-white/30 dark:border-white/5 shadow-2xl relative p-5 flex flex-col justify-between max-h-[90vh] sm:max-h-[85vh]"
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ type: "spring", duration: 0.45, bounce: 0.2 }}
+        className="bg-white/95 dark:bg-neutral-900/95 w-full max-w-md rounded-[28px] border border-white/40 dark:border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.35)] relative flex flex-col justify-between max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
       >
+        {/* Accent top bar */}
+        <div className="h-1 w-full bg-gradient-to-r from-rose-gold-400 via-rose-gold-500 to-rose-gold-600 shrink-0" />
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 border-b border-rose-gold-100/20 pb-3">
-          <h4 className="font-serif text-base font-bold text-neutral-950 dark:text-neutral-50">{title}</h4>
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-neutral-100 dark:border-white/5 shrink-0">
+          <h4 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-50 tracking-tight">{title}</h4>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:scale-110 active:scale-95 transition-all cursor-pointer"
+            className="p-2 rounded-full bg-neutral-100 dark:bg-white/10 text-neutral-500 dark:text-neutral-300 hover:bg-rose-gold-100 hover:text-rose-gold-600 dark:hover:bg-rose-gold-950/50 dark:hover:text-rose-gold-300 active:scale-90 transition-all cursor-pointer"
           >
             <X size={16} />
           </button>
         </div>
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar pr-1 pb-2">
+        <div className="flex-1 overflow-y-auto overscroll-contain custom-scrollbar px-6 py-5">
           {children}
         </div>
       </motion.div>
