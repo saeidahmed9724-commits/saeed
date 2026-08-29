@@ -1,4 +1,4 @@
-import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole } from './types.js';
+import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole, PlayerCardMap, PlayerCardData } from './types.js';
 import { getDefaultDailyQuestions } from './defaultQuestions.js';
 
 // Default Knowledge Base ("اعرفني أكتر ❤️")
@@ -1219,6 +1219,38 @@ export class DataStore {
       descAr: `أكمل ${role === 'Dodo' ? 'سعيد' : 'سهيلة'} اختبار المعرفة وحقق نسبة ${pct}%!`,
       descEn: `${role} completed a knowledge quiz with ${pct}%!`
     });
+  }
+
+  // --- Player Card (FIFA-style partner rating card) ---
+  static getPlayerCard(): PlayerCardMap {
+    return loadFromStorage<PlayerCardMap>('player_card', {});
+  }
+
+  static savePlayerCardRating(
+    ratedByRole: UserRole,
+    data: PlayerCardData,
+    activity?: any
+  ): void {
+    // ratedByRole = who is submitting the rating; the rating is ABOUT the other person
+    const targetKey = ratedByRole === 'Dodo' ? 'ratingsOfSO' : 'ratingsOfDodo';
+    const current = this.getPlayerCard();
+    const updated: PlayerCardMap = {
+      ...current,
+      [targetKey]: { ...data, updatedAt: Date.now() }
+    };
+    saveToStorage('player_card', updated);
+
+    const raterName = ratedByRole === 'Dodo' ? 'سعيد' : 'سهيلة';
+    const targetName = ratedByRole === 'Dodo' ? 'سهيلة' : 'سعيد';
+
+    this.postSharedUpdate('playerCardRatings', updated, activity || {
+      type: 'buzz',
+      titleAr: 'تحديث كارت الشريك 🃏',
+      titleEn: 'Updated Partner Card 🃏',
+      descAr: `قام ${raterName} بتقييم كارت ${targetName}.`,
+      descEn: `${ratedByRole} rated their partner's card.`
+    });
+  }
   }
 
   static getMemories(): Memory[] {
