@@ -1251,7 +1251,6 @@ export class DataStore {
       descEn: `${ratedByRole} rated their partner's card.`
     });
   }
-  }
 
   static getMemories(): Memory[] {
     const stored = loadFromStorage<Memory[]>('memories', defaultMemories);
