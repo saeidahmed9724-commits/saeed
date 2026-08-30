@@ -14,6 +14,7 @@ import {
 } from '../src/dataStore.js';
 import { getDefaultDailyQuestions } from '../src/defaultQuestions.js';
 import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseMap } from '../src/types.js';
+import type { GameType, GameMatch, GameSession } from '../src/gameTypes.js';
 
 const app = express();
 const supabase = createClient(
@@ -62,7 +63,7 @@ interface StickyNote {
 interface LiveActivity {
   id: string;
   sender: 'Dodo' | 'SO';
-  type: 'buzz' | 'mood' | 'sticky_note' | 'wheel_spin' | 'quiz' | 'daily_question' | 'achievement' | 'chat';
+  type: 'buzz' | 'mood' | 'sticky_note' | 'wheel_spin' | 'quiz' | 'daily_question' | 'achievement' | 'chat' | 'game';
   titleAr: string;
   titleEn: string;
   descAr: string;
@@ -115,30 +116,6 @@ interface DailyMoodDay {
   SO?: DailyMoodEntry;
 }
 
-// --- CHAT MEMORIES (imported / recreated WhatsApp-style conversations) ---
-interface MemoryChatMessage {
-  id: string;
-  sender: 'Dodo' | 'SO';
-  date: string;      // 'YYYY-MM-DD'
-  time: string;       // display string, e.g. '10:42 PM'
-  timestamp: number;  // epoch ms, used for sorting
-  content: string;
-  imageUrl?: string;
-  voiceUrl?: string;
-  important?: boolean;
-}
-
-interface ChatMemoryConversation {
-  id: string;
-  title: string;
-  date: string; // 'YYYY-MM-DD' — shown on the card
-  coverImage?: string;
-  messages: MemoryChatMessage[];
-  createdAt: number;
-  updatedAt: number;
-  createdBy?: 'Dodo' | 'SO';
-}
-
 interface InteractionState {
   dodoMood: string;
   soMood: string;
@@ -175,7 +152,8 @@ interface InteractionState {
   voiceMessages?: VoiceMessage[];
   dateActivities?: DateActivity[];
   dailyMoodEntries?: { [date: string]: DailyMoodDay }; // key = 'YYYY-MM-DD'
-  chatMemories?: ChatMemoryConversation[];
+  gameMatches?: GameMatch[];
+  activeGameSession?: GameSession | null;
 }
 
 function buildDefaultState(): InteractionState {
@@ -236,7 +214,8 @@ function buildDefaultState(): InteractionState {
     quizQuestions: [],
     voiceMessages: [],
     dailyMoodEntries: {},
-    chatMemories: []
+    gameMatches: [],
+    activeGameSession: null
   };
 }
 
@@ -272,7 +251,8 @@ async function readState(): Promise<InteractionState> {
       if (!parsed.quizQuestions) parsed.quizQuestions = [];
       if (!parsed.voiceMessages) parsed.voiceMessages = [];
       if (!parsed.dailyMoodEntries) parsed.dailyMoodEntries = {};
-      if (!parsed.chatMemories) parsed.chatMemories = [];
+      if (!parsed.gameMatches) parsed.gameMatches = [];
+      if (parsed.activeGameSession === undefined) parsed.activeGameSession = null;
 
       // Auto-clear activities older than 24 hours
       const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -312,7 +292,7 @@ async function writeState(state: InteractionState) {
 function pushActivity(
   state: InteractionState,
   sender: 'Dodo' | 'SO',
-  type: 'buzz' | 'mood' | 'sticky_note' | 'wheel_spin' | 'quiz' | 'daily_question' | 'achievement' | 'chat',
+  type: 'buzz' | 'mood' | 'sticky_note' | 'wheel_spin' | 'quiz' | 'daily_question' | 'achievement' | 'chat' | 'game',
   titleAr: string,
   titleEn: string,
   descAr: string,
@@ -473,10 +453,6 @@ app.post('/api/upload', async (req, res) => {
         activeState.memories = activeState.memories || [];
         activeState.memories.unshift(newItem);
         createdItems.push(newItem);
-      } else if (category === 'chat-media') {
-        // Used for images attached to Chat Memory messages / conversation covers.
-        // Just uploads and returns the public URL — does not touch any other state list.
-        createdItems.push({ url: fileUrl });
       }
     }
 
@@ -508,17 +484,15 @@ app.post('/api/upload', async (req, res) => {
       actDescEn = `${role} added ${count} new romantic memories.`;
     }
 
-    if (category !== 'chat-media') {
-      pushActivity(
-        activeState,
-        role || 'Dodo',
-        'buzz',
-        actTitleAr,
-        actTitleEn,
-        actDescAr,
-        actDescEn
-      );
-    }
+    pushActivity(
+      activeState,
+      role || 'Dodo',
+      'buzz',
+      actTitleAr,
+      actTitleEn,
+      actDescAr,
+      actDescEn
+    );
 
     await writeState(activeState);
     return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
@@ -960,6 +934,148 @@ app.post('/api/interaction-state/daily-mood', async (req, res) => {
   await writeState(activeState);
   res.json({ success: true, dayEntry: activeState.dailyMoodEntries[date], state: activeState });
 });
+
+// --- OUR ARCADE (Games section) ---
+// Design: the client owns all game rules/logic locally (both partners run the
+// exact same JS), the server just persists a shared "activeGameSession" blob
+// so both devices can poll and stay in sync, and permanently records a
+// GameMatch row whenever a session is marked finished. This keeps the server
+// generic across all 5 very different games instead of re-implementing each
+// game's rules twice.
+
+const GAME_NAMES: Record<GameType, { ar: string; en: string }> = {
+  xo: { ar: 'إكس أو', en: 'Tic-Tac-Toe' },
+  connect4: { ar: 'كونكت فور', en: 'Connect 4' },
+  rps: { ar: 'حجر ورقة مقص', en: 'Rock Paper Scissors' },
+  memory: { ar: 'ميموري ماتش', en: 'Memory Match' },
+  dots: { ar: 'نقاط ومربعات', en: 'Dots & Boxes' }
+};
+
+function recordGameMatch(
+  state: InteractionState,
+  gameType: GameType,
+  winner: 'Dodo' | 'SO' | null,
+  draw: boolean,
+  score: string,
+  details: any,
+  reportedBy?: 'Dodo' | 'SO'
+) {
+  state.gameMatches = state.gameMatches || [];
+  const match: GameMatch = {
+    id: 'match-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+    gameType,
+    player1: 'Dodo',
+    player2: 'SO',
+    winner: winner ?? null,
+    draw: !!draw,
+    score: score ? String(score) : '',
+    details: details || undefined,
+    playedAt: Date.now()
+  };
+  state.gameMatches.unshift(match);
+  if (state.gameMatches.length > 1000) state.gameMatches.pop();
+
+  const meta = GAME_NAMES[gameType] || { ar: gameType, en: gameType };
+  const winnerNameAr = winner === 'Dodo' ? 'سعيد' : winner === 'SO' ? 'سهيلة' : null;
+  const winnerNameEn = winner === 'Dodo' ? 'Saeed' : winner === 'SO' ? 'Sohila' : null;
+  const sender: 'Dodo' | 'SO' = reportedBy === 'Dodo' || reportedBy === 'SO' ? reportedBy : (winner || 'Dodo');
+
+  pushActivity(
+    state,
+    sender,
+    'game',
+    draw ? `تعادل في ${meta.ar} 🤝` : `${winnerNameAr} فاز في ${meta.ar} 🏆`,
+    draw ? `Draw in ${meta.en} 🤝` : `${winnerNameEn} won ${meta.en} 🏆`,
+    draw
+      ? `انتهت مباراة ${meta.ar} بالتعادل${match.score ? ' (' + match.score + ')' : ''}.`
+      : `فاز ${winnerNameAr} في مباراة ${meta.ar}${match.score ? ' بنتيجة ' + match.score : ''}.`,
+    draw
+      ? `A ${meta.en} match ended in a draw${match.score ? ' (' + match.score + ')' : ''}.`
+      : `${winnerNameEn} won a ${meta.en} match${match.score ? ' ' + match.score : ''}.`
+  );
+
+  return match;
+}
+
+// Start a brand new shared game session (overwrites any previous one)
+app.post('/api/games/session/start', async (req, res) => {
+  const { gameType, board, turn, roundScore, round } = req.body;
+  if (!gameType || !turn) {
+    return res.status(400).json({ error: 'gameType and turn are required' });
+  }
+  const activeState = await readState();
+
+  const session: GameSession = {
+    id: 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+    gameType,
+    status: 'active',
+    turn,
+    board: board ?? null,
+    moveCount: 0,
+    winner: null,
+    draw: false,
+    round: round || 1,
+    roundScore: roundScore || { Dodo: 0, SO: 0 },
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+
+  activeState.activeGameSession = session;
+  await writeState(activeState);
+  res.json({ success: true, session });
+});
+
+// Apply a move / patch to the shared session. If `finish` is provided, the
+// session is closed out and a permanent GameMatch record is created.
+app.post('/api/games/session/update', async (req, res) => {
+  const { sessionId, role, patch, finish } = req.body;
+  if (!sessionId) {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+
+  const activeState = await readState();
+  const session = activeState.activeGameSession;
+
+  if (!session || session.id !== sessionId || session.status !== 'active') {
+    // The session was replaced/cancelled/finished elsewhere (e.g. partner
+    // started a rematch first) — let the client know so it can resync.
+    return res.status(409).json({ error: 'stale_session', session: activeState.activeGameSession || null });
+  }
+
+  Object.assign(session, patch || {});
+  session.updatedAt = Date.now();
+
+  let match = null;
+  if (finish) {
+    session.status = 'finished';
+    session.winner = finish.winner ?? null;
+    session.draw = !!finish.draw;
+    match = recordGameMatch(
+      activeState,
+      session.gameType,
+      finish.winner ?? null,
+      !!finish.draw,
+      finish.matchScore,
+      finish.matchDetails,
+      role
+    );
+  }
+
+  await writeState(activeState);
+  res.json({ success: true, session, match, state: activeState });
+});
+
+// Either partner can clear a stuck/abandoned session
+app.post('/api/games/session/cancel', async (req, res) => {
+  const { sessionId } = req.body;
+  const activeState = await readState();
+  if (!sessionId || (activeState.activeGameSession && activeState.activeGameSession.id === sessionId)) {
+    activeState.activeGameSession = null;
+    await writeState(activeState);
+  }
+  res.json({ success: true });
+});
+
 
 // Log a custom action / activity (wheel spin, game score, envelope open)
 app.post('/api/interaction-state/activity', async (req, res) => {
