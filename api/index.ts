@@ -115,6 +115,30 @@ interface DailyMoodDay {
   SO?: DailyMoodEntry;
 }
 
+// --- CHAT MEMORIES (imported / recreated WhatsApp-style conversations) ---
+interface MemoryChatMessage {
+  id: string;
+  sender: 'Dodo' | 'SO';
+  date: string;      // 'YYYY-MM-DD'
+  time: string;       // display string, e.g. '10:42 PM'
+  timestamp: number;  // epoch ms, used for sorting
+  content: string;
+  imageUrl?: string;
+  voiceUrl?: string;
+  important?: boolean;
+}
+
+interface ChatMemoryConversation {
+  id: string;
+  title: string;
+  date: string; // 'YYYY-MM-DD' — shown on the card
+  coverImage?: string;
+  messages: MemoryChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+  createdBy?: 'Dodo' | 'SO';
+}
+
 interface InteractionState {
   dodoMood: string;
   soMood: string;
@@ -151,6 +175,7 @@ interface InteractionState {
   voiceMessages?: VoiceMessage[];
   dateActivities?: DateActivity[];
   dailyMoodEntries?: { [date: string]: DailyMoodDay }; // key = 'YYYY-MM-DD'
+  chatMemories?: ChatMemoryConversation[];
 }
 
 function buildDefaultState(): InteractionState {
@@ -210,7 +235,8 @@ function buildDefaultState(): InteractionState {
     quotes: [],
     quizQuestions: [],
     voiceMessages: [],
-    dailyMoodEntries: {}
+    dailyMoodEntries: {},
+    chatMemories: []
   };
 }
 
@@ -246,6 +272,7 @@ async function readState(): Promise<InteractionState> {
       if (!parsed.quizQuestions) parsed.quizQuestions = [];
       if (!parsed.voiceMessages) parsed.voiceMessages = [];
       if (!parsed.dailyMoodEntries) parsed.dailyMoodEntries = {};
+      if (!parsed.chatMemories) parsed.chatMemories = [];
 
       // Auto-clear activities older than 24 hours
       const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -446,6 +473,10 @@ app.post('/api/upload', async (req, res) => {
         activeState.memories = activeState.memories || [];
         activeState.memories.unshift(newItem);
         createdItems.push(newItem);
+      } else if (category === 'chat-media') {
+        // Used for images attached to Chat Memory messages / conversation covers.
+        // Just uploads and returns the public URL — does not touch any other state list.
+        createdItems.push({ url: fileUrl });
       }
     }
 
@@ -477,15 +508,17 @@ app.post('/api/upload', async (req, res) => {
       actDescEn = `${role} added ${count} new romantic memories.`;
     }
 
-    pushActivity(
-      activeState,
-      role || 'Dodo',
-      'buzz',
-      actTitleAr,
-      actTitleEn,
-      actDescAr,
-      actDescEn
-    );
+    if (category !== 'chat-media') {
+      pushActivity(
+        activeState,
+        role || 'Dodo',
+        'buzz',
+        actTitleAr,
+        actTitleEn,
+        actDescAr,
+        actDescEn
+      );
+    }
 
     await writeState(activeState);
     return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
