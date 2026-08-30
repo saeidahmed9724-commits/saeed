@@ -1,4 +1,4 @@
-import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole, PlayerCardMap, PlayerCardData } from './types.js';
+import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole, ChatMemoryConversation, ChatMemoryMessage } from './types.js';
 import { getDefaultDailyQuestions } from './defaultQuestions.js';
 
 // Default Knowledge Base ("اعرفني أكتر ❤️")
@@ -1066,6 +1066,9 @@ export const defaultSongs: Song[] = [
   }
 ];
 
+// Default Chat Memories ("محادثاتنا المهمة") - empty by default, added by the couple themselves
+export const defaultChatMemories: ChatMemoryConversation[] = [];
+
 // Master Data Store
 export class DataStore {
   private static postSharedUpdate(key: string, data: any, activity?: any): void {
@@ -1112,6 +1115,7 @@ export class DataStore {
     syncItem('quiz_questions', serverState.quizQuestions);
     syncItem('voice_messages', serverState.voiceMessages);
     syncItem('date_activities', serverState.dateActivities);
+    syncItem('chat_memories', serverState.chatMemories);
 
     if (updatedAny && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('datastore_synced'));
@@ -1218,37 +1222,6 @@ export class DataStore {
       titleEn: `New Knowledge Quiz Result 🧩`,
       descAr: `أكمل ${role === 'Dodo' ? 'سعيد' : 'سهيلة'} اختبار المعرفة وحقق نسبة ${pct}%!`,
       descEn: `${role} completed a knowledge quiz with ${pct}%!`
-    });
-  }
-
-  // --- Player Card (FIFA-style partner rating card) ---
-  static getPlayerCard(): PlayerCardMap {
-    return loadFromStorage<PlayerCardMap>('player_card', {});
-  }
-
-  static savePlayerCardRating(
-    ratedByRole: UserRole,
-    data: PlayerCardData,
-    activity?: any
-  ): void {
-    // ratedByRole = who is submitting the rating; the rating is ABOUT the other person
-    const targetKey = ratedByRole === 'Dodo' ? 'ratingsOfSO' : 'ratingsOfDodo';
-    const current = this.getPlayerCard();
-    const updated: PlayerCardMap = {
-      ...current,
-      [targetKey]: { ...data, updatedAt: Date.now() }
-    };
-    saveToStorage('player_card', updated);
-
-    const raterName = ratedByRole === 'Dodo' ? 'سعيد' : 'سهيلة';
-    const targetName = ratedByRole === 'Dodo' ? 'سهيلة' : 'سعيد';
-
-    this.postSharedUpdate('playerCardRatings', updated, activity || {
-      type: 'buzz',
-      titleAr: 'تحديث كارت الشريك 🃏',
-      titleEn: 'Updated Partner Card 🃏',
-      descAr: `قام ${raterName} بتقييم كارت ${targetName}.`,
-      descEn: `${ratedByRole} rated their partner's card.`
     });
   }
 
@@ -1550,5 +1523,160 @@ export class DataStore {
       descAr: 'تم تحديث خيارات عجلة القرارات المشتركة.',
       descEn: 'Shared wheel activities were updated.'
     });
+  }
+
+  // --- CHAT MEMORIES ("محادثاتنا المهمة") ---
+
+  static getChatMemories(): ChatMemoryConversation[] {
+    return loadFromStorage<ChatMemoryConversation[]>('chat_memories', defaultChatMemories);
+  }
+
+  static saveChatMemories(conversations: ChatMemoryConversation[], activity?: any): void {
+    saveToStorage('chat_memories', conversations);
+    this.postSharedUpdate('chatMemories', conversations, activity || {
+      type: 'chat',
+      titleAr: 'تحديث محادثاتنا المهمة 💬',
+      titleEn: 'Updated Chat Memories 💬',
+      descAr: 'تم تحديث أرشيف المحادثات المهمة.',
+      descEn: 'Shared chat memories archive was updated.'
+    });
+  }
+
+  static getChatMemoryConversation(id: string): ChatMemoryConversation | undefined {
+    return this.getChatMemories().find((c) => c.id === id);
+  }
+
+  static createChatMemoryConversation(
+    title: string,
+    date: string,
+    messages: ChatMemoryMessage[] = [],
+    coverImageUrl?: string
+  ): ChatMemoryConversation {
+    const now = Date.now();
+    const newConversation: ChatMemoryConversation = {
+      id: 'chatmem-' + now + '-' + Math.random().toString(36).substr(2, 4),
+      title,
+      date,
+      coverImageUrl,
+      messages,
+      createdAt: now,
+      updatedAt: now
+    };
+    const all = this.getChatMemories();
+    this.saveChatMemories([newConversation, ...all], {
+      type: 'chat',
+      titleAr: 'محادثة مهمة جديدة 💌',
+      titleEn: 'New Important Conversation 💌',
+      descAr: `تم إضافة محادثة مهمة جديدة: "${title}"`,
+      descEn: `A new important conversation was added: "${title}"`
+    });
+    return newConversation;
+  }
+
+  static updateChatMemoryConversation(
+    id: string,
+    updates: Partial<Pick<ChatMemoryConversation, 'title' | 'date' | 'coverImageUrl' | 'messages'>>
+  ): void {
+    const all = this.getChatMemories();
+    const updated = all.map((c) =>
+      c.id === id ? { ...c, ...updates, updatedAt: Date.now() } : c
+    );
+    this.saveChatMemories(updated, {
+      type: 'chat',
+      titleAr: 'تعديل محادثة مهمة ✏️',
+      titleEn: 'Edited Important Conversation ✏️',
+      descAr: 'تم تعديل بيانات محادثة مهمة محفوظة.',
+      descEn: 'An important saved conversation was edited.'
+    });
+  }
+
+  static deleteChatMemoryConversation(id: string): void {
+    const all = this.getChatMemories();
+    const target = all.find((c) => c.id === id);
+    const updated = all.filter((c) => c.id !== id);
+    this.saveChatMemories(updated, {
+      type: 'chat',
+      titleAr: 'حذف محادثة مهمة 🗑️',
+      titleEn: 'Deleted Important Conversation 🗑️',
+      descAr: `تم حذف المحادثة "${target?.title || ''}" من الأرشيف.`,
+      descEn: `Conversation "${target?.title || ''}" was removed from the archive.`
+    });
+  }
+
+  static addMessagesToChatMemory(conversationId: string, newMessages: ChatMemoryMessage[]): void {
+    const all = this.getChatMemories();
+    const updated = all.map((c) => {
+      if (c.id !== conversationId) return c;
+      const startOrder = c.messages.length > 0 ? Math.max(...c.messages.map((m) => m.order)) + 1 : 0;
+      const withOrder = newMessages.map((m, idx) => ({ ...m, order: startOrder + idx }));
+      return { ...c, messages: [...c.messages, ...withOrder], updatedAt: Date.now() };
+    });
+    this.saveChatMemories(updated, {
+      type: 'chat',
+      titleAr: 'رسائل جديدة في محادثة مهمة 💬',
+      titleEn: 'New Messages in Important Conversation 💬',
+      descAr: `تم إضافة ${newMessages.length} رسالة إلى محادثة محفوظة.`,
+      descEn: `${newMessages.length} message(s) were added to a saved conversation.`
+    });
+  }
+
+  static updateChatMemoryMessage(
+    conversationId: string,
+    messageId: string,
+    updates: Partial<ChatMemoryMessage>
+  ): void {
+    const all = this.getChatMemories();
+    const updated = all.map((c) => {
+      if (c.id !== conversationId) return c;
+      return {
+        ...c,
+        messages: c.messages.map((m) => (m.id === messageId ? { ...m, ...updates } : m)),
+        updatedAt: Date.now()
+      };
+    });
+    this.saveChatMemories(updated);
+  }
+
+  static deleteChatMemoryMessage(conversationId: string, messageId: string): void {
+    const all = this.getChatMemories();
+    const updated = all.map((c) => {
+      if (c.id !== conversationId) return c;
+      return {
+        ...c,
+        messages: c.messages.filter((m) => m.id !== messageId),
+        updatedAt: Date.now()
+      };
+    });
+    this.saveChatMemories(updated);
+  }
+
+  static reorderChatMemoryMessages(conversationId: string, orderedMessageIds: string[]): void {
+    const all = this.getChatMemories();
+    const updated = all.map((c) => {
+      if (c.id !== conversationId) return c;
+      const byId = new Map(c.messages.map((m) => [m.id, m]));
+      const reordered = orderedMessageIds
+        .map((id, idx) => {
+          const msg = byId.get(id);
+          return msg ? { ...msg, order: idx } : null;
+        })
+        .filter(Boolean) as ChatMemoryMessage[];
+      return { ...c, messages: reordered, updatedAt: Date.now() };
+    });
+    this.saveChatMemories(updated);
+  }
+
+  static toggleChatMemoryMessageImportant(conversationId: string, messageId: string): void {
+    const all = this.getChatMemories();
+    const updated = all.map((c) => {
+      if (c.id !== conversationId) return c;
+      return {
+        ...c,
+        messages: c.messages.map((m) =>
+          m.id === messageId ? { ...m, isImportant: !m.isImportant } : m
+        )
+      };
+    });
+    this.saveChatMemories(updated);
   }
 }

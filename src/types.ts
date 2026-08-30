@@ -206,29 +206,29 @@ export interface UserStatus {
   choosing: boolean;
 }
 
-export interface DailyMoodEntry {
-  dateStr: string; // YYYY-MM-DD, one entry per calendar day
-  moodDodo?: string; // mood id from MOOD_LIST
-  ratingDodo?: number; // 1-10
-  noteDodo?: string;
-  timestampDodo?: number;
-  moodSO?: string;
-  ratingSO?: number;
-  noteSO?: string;
-  timestampSO?: number;
+// --- CHAT MEMORIES ("محادثاتنا المهمة") ---
+// Archived / re-created snapshots of important WhatsApp conversations,
+// separate from the live ChatMessage system above.
+
+export interface ChatMemoryMessage {
+  id: string;
+  sender: 'Dodo' | 'SO';
+  text?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'voice' | 'video' | 'file';
+  voiceDuration?: string;
+  timestamp: number; // the real historical date+time of the message (ms)
+  isImportant?: boolean;
+  order: number; // explicit manual ordering (in case timestamps collide/are equal)
 }
 
-export interface PlayerCardData {
-  ratings: Record<string, number>; // attributeId -> 0-100
-  strength?: string;
-  weakness?: string;
-  signatureMove?: string;
-  updatedAt?: number;
-}
-
-export interface PlayerCardMap {
-  // ratingsOfDodo = ratings given BY Sohila ABOUT Saeed, and vice versa
-  ratingsOfDodo?: PlayerCardData;
-  ratingsOfSO?: PlayerCardData;
+export interface ChatMemoryConversation {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD - representative/cover date shown on the card
+  coverImageUrl?: string;
+  messages: ChatMemoryMessage[];
+  createdAt: number;
+  updatedAt: number;
 }
 

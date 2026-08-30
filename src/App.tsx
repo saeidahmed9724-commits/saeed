@@ -14,8 +14,6 @@ import NightSky from './components/NightSky';
 import DateGenerator from './components/DateGenerator';
 import DailyQuestionSection from './components/DailyQuestionSection';
 import DailyMoodSection from './components/DailyMoodSection';
-import GamesSection from './components/GamesSection';
-import PlayerCardSection from './components/PlayerCardSection';
 import MemoryReel from './components/MemoryReel';
 import SurpriseMe from './components/SurpriseMe';
 import BirthdayConfetti from './components/BirthdayConfetti';
@@ -25,6 +23,7 @@ import AchievementsSection from './components/AchievementsSection';
 import DirectUploaderModal from './components/DirectUploaderModal';
 import GalleryToMemoryModal from './components/GalleryToMemoryModal';
 import ChatSection from './components/ChatSection';
+import ChatMemoriesSection from './components/ChatMemoriesSection';
 import { KnowledgeBaseModal, getPartnerKnowledgeScores } from './components/KnowledgeBaseModal';
 
 // Shuffling helper function
@@ -102,9 +101,9 @@ export default function App() {
   const [lang, setLang] = useState<Language>(() => (localStorage.getItem('app_lang') as Language) || 'ar');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isAutoTheme, setIsAutoTheme] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile' | 'chat'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile' | 'chat' | 'chatMemories'>('home');
   const [isLanding, setIsLanding] = useState(true);
-  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'mood-tracker' | 'games' | 'player-card' | null>(null);
+  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'mood-tracker' | null>(null);
   const [anniversaryText, setAnniversaryText] = useState('');
   const [countdownUnits, setCountdownUnits] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => (localStorage.getItem('user_role') as UserRole) || 'Dodo');
@@ -1416,6 +1415,22 @@ export default function App() {
                       </div>
                     </button>
 
+                    {/* 1b. Chat Memories ("محادثاتنا المهمة") */}
+                    <button
+                      onClick={() => setActiveTab('chatMemories')}
+                      className="rounded-2xl glass p-3 border border-white/30 dark:border-white/5 shadow-xs hover:scale-[1.02] active:scale-98 transition-all flex flex-col justify-between items-start text-left rtl:text-right cursor-pointer group h-full min-h-[90px]"
+                    >
+                      <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">💬</span>
+                      <div>
+                        <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">
+                          {lang === 'ar' ? 'محادثاتنا المهمة' : 'Our Important Chats'}
+                        </h4>
+                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
+                          {lang === 'ar' ? 'أرشيف محادثات واتساب' : 'Saved WhatsApp chats'}
+                        </p>
+                      </div>
+                    </button>
+
                     {/* 2. Date Wheel */}
                     <button
                       onClick={() => setActiveWidgetModal('wheel')}
@@ -1468,34 +1483,6 @@ export default function App() {
                         <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">{lang === 'ar' ? 'مزاج اليوم' : 'Daily Mood'}</h4>
                         <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
                           {lang === 'ar' ? 'قيّموا يومكم مع بعض' : 'Rate your day together'}
-                        </p>
-                      </div>
-                    </button>
-
-                    {/* 4c. Our Arcade */}
-                    <button
-                      onClick={() => setActiveWidgetModal('games')}
-                      className="rounded-2xl glass p-3 border border-white/30 dark:border-white/5 shadow-xs hover:scale-[1.02] active:scale-98 transition-all flex flex-col justify-between items-start text-left rtl:text-right cursor-pointer group h-full min-h-[90px]"
-                    >
-                      <span className="text-xl sm:text-2xl group-hover:animate-bounce">🕹️</span>
-                      <div>
-                        <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">{lang === 'ar' ? 'الأركيد بتاعنا' : 'Our Arcade'}</h4>
-                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
-                          {lang === 'ar' ? 'ألعاب سريعة سعيد ضد سهيلة' : 'Quick games, Saeed vs Sohila'}
-                        </p>
-                      </div>
-                    </button>
-
-                    {/* 4d. Partner Card */}
-                    <button
-                      onClick={() => setActiveWidgetModal('player-card')}
-                      className="rounded-2xl glass p-3 border border-white/30 dark:border-white/5 shadow-xs hover:scale-[1.02] active:scale-98 transition-all flex flex-col justify-between items-start text-left rtl:text-right cursor-pointer group h-full min-h-[90px]"
-                    >
-                      <span className="text-xl sm:text-2xl group-hover:animate-bounce">🃏</span>
-                      <div>
-                        <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">{lang === 'ar' ? 'كارت الشريك' : 'Partner Card'}</h4>
-                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
-                          {lang === 'ar' ? 'قيّم شريكك بأسلوب فيفا' : 'Rate your partner, FIFA-style'}
                         </p>
                       </div>
                     </button>
@@ -1599,6 +1586,13 @@ export default function App() {
                       >
                         <ImageIcon size={16} />
                         <span>{lang === 'ar' ? 'اختيار صورة من المعرض 🖼️' : 'Pick Photo from Gallery 🖼️'}</span>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('chatMemories')}
+                        className="px-5 py-2.5 rounded-2xl bg-white/80 dark:bg-neutral-800/80 hover:bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 font-bold text-xs flex items-center gap-2 border border-rose-gold-500/30 shadow-sm hover:scale-105 transition-all cursor-pointer"
+                      >
+                        <span>💬</span>
+                        <span>{lang === 'ar' ? 'محادثاتنا المهمة' : 'Our Important Chats'}</span>
                       </button>
                     </div>
                   </div>
@@ -2147,6 +2141,18 @@ export default function App() {
               </div>
             )}
 
+            {/* --- CHAT MEMORIES TAB ("محادثاتنا المهمة") --- */}
+            {activeTab === 'chatMemories' && (
+              <div className="animate-fade-in py-1">
+                <ChatMemoriesSection
+                  lang={lang}
+                  currentUserRole={currentUserRole}
+                  liveState={liveState}
+                  onDataChanged={onDataChanged}
+                />
+              </div>
+            )}
+
             </div>
 
             {/* --- WIDGET MODALS --- */}
@@ -2173,16 +2179,6 @@ export default function App() {
             {activeWidgetModal === 'mood-tracker' && (
               <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'مزاج اليوم 🥰' : 'Daily Mood 🥰'}>
                 <DailyMoodSection lang={lang} currentUserRole={currentUserRole} />
-              </WidgetModal>
-            )}
-            {activeWidgetModal === 'games' && (
-              <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'الأركيد بتاعنا 🕹️' : 'Our Arcade 🕹️'}>
-                <GamesSection lang={lang} currentUserRole={currentUserRole} />
-              </WidgetModal>
-            )}
-            {activeWidgetModal === 'player-card' && (
-              <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'كارت الشريك 🃏' : 'Partner Card 🃏'}>
-                <PlayerCardSection lang={lang} currentRole={currentUserRole} />
               </WidgetModal>
             )}
             {activeWidgetModal === 'achievements' && (
