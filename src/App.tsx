@@ -15,6 +15,7 @@ import DateGenerator from './components/DateGenerator';
 import DailyQuestionSection from './components/DailyQuestionSection';
 import DailyMoodSection from './components/DailyMoodSection';
 import GamesSection from './components/GamesSection';
+import PlayerCardSection from './components/PlayerCardSection';
 import MemoryReel from './components/MemoryReel';
 import SurpriseMe from './components/SurpriseMe';
 import BirthdayConfetti from './components/BirthdayConfetti';
@@ -103,7 +104,7 @@ export default function App() {
   const [isAutoTheme, setIsAutoTheme] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile' | 'chat'>('home');
   const [isLanding, setIsLanding] = useState(true);
-  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'mood-tracker' | 'games' | null>(null);
+  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'mood-tracker' | 'games' | 'player-card' | null>(null);
   const [anniversaryText, setAnniversaryText] = useState('');
   const [countdownUnits, setCountdownUnits] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => (localStorage.getItem('user_role') as UserRole) || 'Dodo');
@@ -1485,6 +1486,20 @@ export default function App() {
                       </div>
                     </button>
 
+                    {/* 4d. Partner Card */}
+                    <button
+                      onClick={() => setActiveWidgetModal('player-card')}
+                      className="rounded-2xl glass p-3 border border-white/30 dark:border-white/5 shadow-xs hover:scale-[1.02] active:scale-98 transition-all flex flex-col justify-between items-start text-left rtl:text-right cursor-pointer group h-full min-h-[90px]"
+                    >
+                      <span className="text-xl sm:text-2xl group-hover:animate-bounce">🃏</span>
+                      <div>
+                        <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">{lang === 'ar' ? 'كارت الشريك' : 'Partner Card'}</h4>
+                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
+                          {lang === 'ar' ? 'قيّم شريكك بأسلوب فيفا' : 'Rate your partner, FIFA-style'}
+                        </p>
+                      </div>
+                    </button>
+
                     {/* 7. Achievements */}
                     <button
                       onClick={() => setActiveWidgetModal('achievements')}
@@ -2163,6 +2178,11 @@ export default function App() {
             {activeWidgetModal === 'games' && (
               <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'الأركيد بتاعنا 🕹️' : 'Our Arcade 🕹️'}>
                 <GamesSection lang={lang} currentUserRole={currentUserRole} />
+              </WidgetModal>
+            )}
+            {activeWidgetModal === 'player-card' && (
+              <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'كارت الشريك 🃏' : 'Partner Card 🃏'}>
+                <PlayerCardSection lang={lang} currentRole={currentUserRole} />
               </WidgetModal>
             )}
             {activeWidgetModal === 'achievements' && (
