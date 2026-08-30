@@ -10,10 +10,10 @@ import { translations } from './translations';
 import ParallaxBackground from './components/ParallaxBackground';
 import TimelineCards from './components/TimelineCards';
 import OpenWhenEnvelope from './components/OpenWhenEnvelope';
-import PlayerCardSection from './components/PlayerCardSection';
 import NightSky from './components/NightSky';
 import DateGenerator from './components/DateGenerator';
 import DailyQuestionSection from './components/DailyQuestionSection';
+import DailyMoodSection from './components/DailyMoodSection';
 import MemoryReel from './components/MemoryReel';
 import SurpriseMe from './components/SurpriseMe';
 import BirthdayConfetti from './components/BirthdayConfetti';
@@ -102,7 +102,7 @@ export default function App() {
   const [isAutoTheme, setIsAutoTheme] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile' | 'chat'>('home');
   const [isLanding, setIsLanding] = useState(true);
-  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | null>(null);
+  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'mood-tracker' | null>(null);
   const [anniversaryText, setAnniversaryText] = useState('');
   const [countdownUnits, setCountdownUnits] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => (localStorage.getItem('user_role') as UserRole) || 'Dodo');
@@ -1400,22 +1400,6 @@ export default function App() {
                       </div>
                     </button>
                     
-                    {/* Player Card (FIFA-style) */}
-                    <button
-                      onClick={() => setActiveWidgetModal('playerCard')}
-                      className="rounded-2xl glass p-3 border border-white/30 dark:border-white/5 shadow-xs hover:scale-[1.02] active:scale-98 transition-all flex flex-col justify-between items-start text-left rtl:text-right cursor-pointer group h-full min-h-[90px]"
-                    >
-                      <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">🃏</span>
-                      <div>
-                        <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">
-                          {lang === 'ar' ? 'كارت الشريك' : "Partner's Card"}
-                        </h4>
-                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
-                          {lang === 'ar' ? 'قيّم شريكك زي كارت اللاعبين' : 'Rate your partner FIFA-style'}
-                        </p>
-                      </div>
-                    </button>
-
                     {/* 1. Open When */}
                     <button
                       onClick={() => setActiveWidgetModal('envelope')}
@@ -1468,6 +1452,20 @@ export default function App() {
                         <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">{t.dailyQuestion || 'Daily Q&A'}</h4>
                         <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
                           {lang === 'ar' ? 'سؤال اليوم المتجدد' : 'Daily questions'}
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* 4b. Daily Mood */}
+                    <button
+                      onClick={() => setActiveWidgetModal('mood-tracker')}
+                      className="rounded-2xl glass p-3 border border-white/30 dark:border-white/5 shadow-xs hover:scale-[1.02] active:scale-98 transition-all flex flex-col justify-between items-start text-left rtl:text-right cursor-pointer group h-full min-h-[90px]"
+                    >
+                      <span className="text-xl sm:text-2xl group-hover:animate-bounce">🥰</span>
+                      <div>
+                        <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">{lang === 'ar' ? 'مزاج اليوم' : 'Daily Mood'}</h4>
+                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
+                          {lang === 'ar' ? 'قيّموا يومكم مع بعض' : 'Rate your day together'}
                         </p>
                       </div>
                     </button>
@@ -1543,10 +1541,10 @@ export default function App() {
               };
 
               return (
-                <div className="space-y-10 py-2 animate-fade-in">
+                <div className="space-y-12 py-2 animate-fade-in">
                   <div className="text-center mb-8 relative">
                     <h3 className="font-serif text-3xl font-bold text-neutral-950 dark:text-neutral-50 mb-2">
-                      {t.memories} 💖
+                      {t.memories} ✨
                     </h3>
                     <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-md mx-auto leading-relaxed">
                       {lang === 'ar'
@@ -1557,7 +1555,7 @@ export default function App() {
                     <div className="mt-5 flex justify-center gap-3 flex-wrap">
                       <button
                         onClick={() => setIsDirectUploadOpen(true)}
-                        className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-rose-gold-500 to-pink-500 hover:from-rose-gold-600 hover:to-pink-600 text-white font-bold text-xs flex items-center gap-2 shadow-md hover:scale-105 transition-all cursor-pointer"
+                        className="px-5 py-2.5 rounded-full bg-gradient-to-r from-rose-gold-500 to-pink-500 hover:from-rose-gold-600 hover:to-pink-600 text-white font-bold text-xs flex items-center gap-2 shadow-md hover:scale-105 transition-all cursor-pointer"
                       >
                         <Plus size={16} />
                         <span>{lang === 'ar' ? 'إضافة ذكريات وصور جديدة 📸' : 'Add New Memories & Photos 📸'}</span>
@@ -1567,7 +1565,7 @@ export default function App() {
                           setSelectedGalleryItemForMemory(null);
                           setIsGalleryToMemoryOpen(true);
                         }}
-                        className="px-5 py-2.5 rounded-2xl bg-white/80 dark:bg-neutral-800/80 hover:bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 font-bold text-xs flex items-center gap-2 border border-rose-gold-500/30 shadow-sm hover:scale-105 transition-all cursor-pointer"
+                        className="px-5 py-2.5 rounded-full bg-white/80 dark:bg-neutral-800/80 hover:bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 font-bold text-xs flex items-center gap-2 border border-rose-gold-500/30 shadow-sm hover:scale-105 transition-all cursor-pointer"
                       >
                         <ImageIcon size={16} />
                         <span>{lang === 'ar' ? 'اختيار صورة من المعرض 🖼️' : 'Pick Photo from Gallery 🖼️'}</span>
@@ -1583,69 +1581,55 @@ export default function App() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-12">
+                    <div className="space-y-14">
                       {sortedDates.map((dateKey) => {
                         const groupMemories = groupedByDate[dateKey];
                         const formattedLabel = formatDateLabel(dateKey);
 
                         return (
-                          <div key={`group-${dateKey}`} className="space-y-6">
-                            {/* Date Group Header */}
-                            <div className="flex items-center gap-3 pb-3 border-b border-rose-gold-200/60 dark:border-white/10">
-                              <div className="w-10 h-10 rounded-2xl bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 flex items-center justify-center font-bold text-lg shadow-xs">
-                                📅
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="font-serif text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100">
-                                    {formattedLabel}
-                                  </h4>
-                                  <span className="px-2.5 py-0.5 rounded-full bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 text-xs font-mono font-bold">
-                                    {dateKey}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mt-0.5">
+                          <div key={`group-${dateKey}`} className="space-y-5">
+                            {/* Editorial-style Date Group Header */}
+                            <div className="pb-2">
+                              <div className="flex items-baseline gap-2 flex-wrap">
+                                <h4 className="font-serif text-xl sm:text-2xl font-bold text-neutral-900 dark:text-neutral-100">
+                                  📅 {formattedLabel}
+                                </h4>
+                                <span className="text-[11px] font-medium text-rose-gold-500 dark:text-rose-gold-400">
                                   {lang === 'ar'
-                                    ? `${groupMemories.length} ذكريات ومواقف مصورة`
-                                    : `${groupMemories.length} memory photos`}
-                                </p>
+                                    ? `${groupMemories.length} ذكريات`
+                                    : `${groupMemories.length} memories`}
+                                </span>
                               </div>
+                              <div className="mt-2 h-px w-full bg-gradient-to-r from-rose-gold-400/50 via-rose-gold-200/20 to-transparent" />
                             </div>
 
-                            {/* Memories Grid for this date */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                              {groupMemories.map((mem, idx) => (
-                                <div
-                                  key={`mem-${mem.id || idx}-${idx}`}
-                                  className="rounded-[28px] glass p-6 border border-white/50 dark:border-white/10 shadow-lg flex flex-col justify-between hover:scale-[1.01] transition-all duration-300"
-                                >
-                                  {mem.imageUrl && (
-                                    <div className="rounded-2xl overflow-hidden bg-neutral-100/50 dark:bg-neutral-800/50 mb-6 flex items-center justify-center max-h-[420px] shadow-sm">
-                                      <img
-                                        src={mem.imageUrl}
-                                        referrerPolicy="no-referrer"
-                                        alt={mem.title}
-                                        onError={() => {
-                                          setBrokenMemoryImageIds(prev => new Set(prev).add(mem.id));
-                                        }}
-                                        className="w-full h-auto max-h-[420px] object-contain rounded-2xl"
-                                      />
-                                    </div>
-                                  )}
-                                  <div className="flex flex-col gap-3">
-                                    <h4 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-100 leading-snug">
-                                      {mem.title}
-                                    </h4>
-                                    <div>
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 text-[11px] font-mono font-bold border border-rose-gold-500/20">
-                                        📅 {mem.date}
-                                      </span>
-                                    </div>
-                                    <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed pt-1">
-                                      {mem.content}
-                                    </p>
+                            {/* Masonry / scrapbook layout for this date */}
+                            <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 [column-fill:_balance]">
+                              {groupMemories.map((mem, idx) => {
+                                const rotationClass =
+                                  idx % 5 === 0 ? '-rotate-[1.1deg]' :
+                                  idx % 5 === 2 ? 'rotate-[1deg]' :
+                                  idx % 5 === 4 ? '-rotate-[0.6deg]' : '';
 
-                                    <div className="pt-4 mt-2 border-t border-rose-gold-100/20 flex items-center justify-between">
+                                return (
+                                  <div
+                                    key={`mem-${mem.id || idx}-${idx}`}
+                                    className="mb-5 break-inside-avoid inline-block w-full"
+                                  >
+                                    <div className={`group relative rounded-[18px] overflow-hidden bg-neutral-900/5 dark:bg-black/40 shadow-sm hover:shadow-md transition-all duration-300 ${rotationClass}`}>
+                                      {mem.imageUrl && (
+                                        <img
+                                          src={mem.imageUrl}
+                                          referrerPolicy="no-referrer"
+                                          alt={mem.title}
+                                          onError={() => {
+                                            setBrokenMemoryImageIds(prev => new Set(prev).add(mem.id));
+                                          }}
+                                          className="w-full h-auto object-cover block"
+                                        />
+                                      )}
+
+                                      {/* Quiet delete icon */}
                                       <button
                                         onClick={() => {
                                           if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذه الذكرى؟' : 'Are you sure you want to delete this memory?')) {
@@ -1660,12 +1644,30 @@ export default function App() {
                                             onDataChanged();
                                           }
                                         }}
-                                        className="p-2 rounded-full text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
                                         title={lang === 'ar' ? 'حذف هذه الذكرى' : 'Delete memory'}
+                                        className="absolute top-2 right-2 rtl:right-auto rtl:left-2 p-1.5 rounded-full bg-black/25 text-white/60 opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-black/45 transition-all cursor-pointer z-10"
                                       >
-                                        <Trash2 size={16} />
+                                        <Trash2 size={13} />
                                       </button>
 
+                                      {/* Bottom paper-like overlay with caption */}
+                                      <div className="absolute inset-x-0 bottom-0 px-3.5 pt-8 pb-3 bg-gradient-to-t from-black/85 via-black/50 to-transparent">
+                                        <span className="inline-block text-[10px] font-mono font-bold text-rose-gold-300 tracking-wide mb-1">
+                                          {mem.date}
+                                        </span>
+                                        <h4 className="font-serif text-sm font-bold text-white leading-snug line-clamp-2">
+                                          {mem.title}
+                                        </h4>
+                                        {mem.content && (
+                                          <p className="text-[11px] text-white/70 leading-relaxed mt-0.5 line-clamp-2">
+                                            {mem.content}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Share-in-chat pill, right under this memory */}
+                                    <div className="flex justify-center mt-2">
                                       <button
                                         onClick={async () => {
                                           try {
@@ -1693,15 +1695,15 @@ export default function App() {
                                             console.error('Error sharing memory:', err);
                                           }
                                         }}
-                                        className="text-xs font-bold text-rose-gold-600 dark:text-rose-gold-400 hover:text-rose-gold-700 bg-rose-gold-500/10 hover:bg-rose-gold-500/20 px-4 py-2 rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                        className="text-[10px] font-bold text-rose-gold-600 dark:text-rose-gold-400 hover:text-rose-gold-700 bg-rose-gold-500/10 hover:bg-rose-gold-500/20 px-3.5 py-1.5 rounded-full transition-all flex items-center gap-1.5 cursor-pointer"
                                       >
                                         <span>💬</span>
                                         <span>{lang === 'ar' ? 'مشاركة في المحادثة' : 'Share in Chat'}</span>
                                       </button>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         );
@@ -2142,6 +2144,11 @@ export default function App() {
                 <DailyQuestionSection lang={lang} currentUserRole={currentUserRole} initialQuestionId={selectedQuestionId} />
               </WidgetModal>
             )}
+            {activeWidgetModal === 'mood-tracker' && (
+              <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'مزاج اليوم 🥰' : 'Daily Mood 🥰'}>
+                <DailyMoodSection lang={lang} currentUserRole={currentUserRole} />
+              </WidgetModal>
+            )}
             {activeWidgetModal === 'achievements' && (
               <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'منصة الإنجازات والأوسمة 🏆' : 'Our Achievements & Trophies 🏆'}>
                 <AchievementsSection lang={lang} highlightedId={selectedAchievementId} />
@@ -2193,12 +2200,6 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </WidgetModal>
-            )}
-
-            {activeWidgetModal === 'playerCard' && (
-              <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'كارت الشريك 🃏' : "Partner's Card 🃏"}>
-                <PlayerCardSection lang={lang} currentRole={currentUserRole} />
               </WidgetModal>
             )}
 
