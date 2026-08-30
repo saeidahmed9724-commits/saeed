@@ -511,10 +511,17 @@ export default function ChatSection({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] max-w-4xl mx-auto rounded-[36px] glass border border-white/20 dark:border-white/5 overflow-hidden shadow-xl animate-fade-in relative">
-      
+    <div
+      className="flex flex-col h-[calc(100vh-140px)] max-w-4xl mx-auto rounded-[36px] overflow-hidden shadow-2xl animate-fade-in relative"
+      style={{
+        background: 'radial-gradient(120% 90% at 50% 0%, #1c1013 0%, #100a0c 55%, #0a0608 100%)'
+      }}
+    >
+      {/* subtle continuous pink identity line down the side of the conversation */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 w-px bg-gradient-to-b from-transparent via-rose-gold-500/25 to-transparent z-20" />
+
       {/* CHAT HEADER */}
-      <div className="p-4 border-b border-white/20 dark:border-neutral-900 bg-white/40 dark:bg-black/20 backdrop-blur-md flex justify-between items-center z-10 shrink-0">
+      <div className="p-4 border-b border-white/5 bg-[rgba(20,12,15,0.82)] backdrop-blur-md flex justify-between items-center z-10 shrink-0">
         <div className="flex items-center gap-3">
           <div className="relative">
             <img 
@@ -523,15 +530,15 @@ export default function ChatSection({
                 : 'https://res.cloudinary.com/utefkiln/image/upload/v1784470798/WhatsApp_Image_2026-05-31_at_3.46.04_PM_junpuw.jpg'
               } 
               referrerPolicy="no-referrer"
-              className="w-10 h-10 rounded-full object-cover border border-rose-gold-300 shadow-sm"
+              className="w-11 h-11 rounded-full object-cover border border-rose-gold-400/60 shadow-sm"
               alt=""
             />
             {partnerHeaderStatus.text.includes('🟢') && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-neutral-900 animate-pulse" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#150d10] animate-pulse" />
             )}
           </div>
           <div>
-            <h4 className="font-serif text-sm font-bold text-neutral-900 dark:text-neutral-50 flex items-center gap-1.5">
+            <h4 className="font-serif text-sm font-bold text-neutral-50 flex items-center gap-1.5">
               <span>{partnerName}</span>
               <span className="text-xs">💖</span>
             </h4>
@@ -549,11 +556,11 @@ export default function ChatSection({
               placeholder={lang === 'ar' ? 'بحث...' : 'Search...'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full text-xs py-1.5 pl-7 pr-3 rounded-full bg-white/40 dark:bg-black/30 border border-neutral-300/40 focus:outline-none focus:border-rose-gold-400 font-medium"
+              className="w-full text-xs py-1.5 pl-7 pr-3 rounded-full bg-white/5 dark:bg-white/5 border border-white/10 focus:outline-none focus:border-rose-gold-400/60 font-medium text-neutral-100 placeholder:text-neutral-500"
             />
-            <Search size={12} className="absolute left-2.5 top-2.5 text-neutral-400" />
+            <Search size={12} className="absolute left-2.5 top-2.5 text-neutral-500" />
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-2 top-2.5 text-neutral-400 hover:text-neutral-600">
+              <button onClick={() => setSearchTerm('')} className="absolute right-2 top-2.5 text-neutral-500 hover:text-neutral-300">
                 <X size={10} />
               </button>
             )}
@@ -565,9 +572,9 @@ export default function ChatSection({
       {pinnedMessage && (
         <div 
           onClick={() => handleScrollToMessage(pinnedMessage.id)}
-          className="bg-rose-gold-50/80 dark:bg-rose-gold-950/20 px-4 py-2 border-b border-rose-gold-200/40 text-xs flex justify-between items-center cursor-pointer hover:bg-rose-gold-100/50 dark:hover:bg-rose-gold-950/30 transition-all z-10 shrink-0"
+          className="bg-rose-gold-950/30 px-4 py-2 border-b border-rose-gold-500/10 text-xs flex justify-between items-center cursor-pointer hover:bg-rose-gold-950/45 transition-all z-10 shrink-0"
         >
-          <div className="flex items-center gap-2 text-rose-gold-600 dark:text-rose-gold-400 font-bold truncate">
+          <div className="flex items-center gap-2 text-rose-gold-300 font-bold truncate">
             <Pin size={12} className="shrink-0 rotate-45" />
             <span className="uppercase text-[9px] tracking-wider font-mono">{lang === 'ar' ? 'مثبتة' : 'Pinned'}:</span>
             <span className="truncate max-w-[250px] md:max-w-md font-medium">
@@ -579,7 +586,7 @@ export default function ChatSection({
               e.stopPropagation();
               handleTogglePinMessage(pinnedMessage);
             }} 
-            className="p-1 rounded-full text-neutral-400 hover:text-rose-gold-600 dark:hover:text-rose-gold-400"
+            className="p-1 rounded-full text-neutral-500 hover:text-rose-gold-300"
           >
             <X size={12} />
           </button>
@@ -589,10 +596,10 @@ export default function ChatSection({
       {/* MESSAGES LISTING */}
       <div 
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 bg-white/5 dark:bg-black/10"
+        className="flex-1 overflow-y-auto p-4 space-y-3 bg-transparent"
       >
         {filteredMessages.length === 0 ? (
-          <div className="h-full flex flex-col justify-center items-center text-center p-8 text-neutral-400">
+          <div className="h-full flex flex-col justify-center items-center text-center p-8 text-neutral-500">
             <div className="text-4xl mb-2">💌</div>
             <p className="text-xs font-medium">
               {searchTerm 
@@ -602,21 +609,39 @@ export default function ChatSection({
             </p>
           </div>
         ) : (
-          filteredMessages.map((msg) => {
+          (() => {
+            let lastDayKey: string | null = null;
+            return filteredMessages.map((msg) => {
             const isMe = msg.sender === currentUserRole;
             const messageSenderName = msg.sender === 'Dodo' ? (lang === 'ar' ? 'سعيد' : 'Saeed') : (lang === 'ar' ? 'سهيلة' : 'Sohila');
+            const msgDate = new Date(msg.timestamp);
+            const dayKey = msgDate.toDateString();
+            const showDayMarker = dayKey !== lastDayKey;
+            lastDayKey = dayKey;
+            const dayLabel = msgDate.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            });
             
             return (
-              <div 
-                key={msg.id}
+              <React.Fragment key={msg.id}>
+                {showDayMarker && (
+                  <div className="flex items-center justify-center py-2">
+                    <span className="text-[10px] font-semibold tracking-wide text-rose-gold-300/60">
+                      ♡ {dayLabel} ♡
+                    </span>
+                  </div>
+                )}
+                <div 
                 id={`msg-${msg.id}`}
-                className={`flex flex-col max-w-[80%] ${isMe ? 'self-end ml-auto rtl:mr-auto rtl:ml-0' : 'self-start mr-auto rtl:ml-auto rtl:mr-0'}`}
+                className={`flex flex-col max-w-[80%] sm:max-w-[72%] ${isMe ? 'self-end ml-auto rtl:mr-auto rtl:ml-0' : 'self-start mr-auto rtl:ml-auto rtl:mr-0'}`}
               >
                 {/* Reply Indicator above bubble */}
                 {msg.replyToId && (
                   <div 
                     onClick={() => handleScrollToMessage(msg.replyToId!)}
-                    className="flex items-center gap-1.5 text-[10px] text-neutral-400 bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-t-2xl border-l-2 border-rose-gold-400 cursor-pointer hover:text-neutral-600 transition-colors self-start truncate max-w-full -mb-1"
+                    className="flex items-center gap-1.5 text-[10px] text-neutral-400 bg-white/5 px-2.5 py-1 rounded-t-2xl border-l-2 border-rose-gold-400/70 cursor-pointer hover:text-neutral-200 transition-colors self-start truncate max-w-full -mb-1"
                   >
                     <Reply size={8} />
                     <span className="font-bold">{msg.replyToSender === currentUserRole ? (lang === 'ar' ? 'أنت' : 'You') : partnerName}:</span>
@@ -632,14 +657,14 @@ export default function ChatSection({
                     <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => setActiveMessageIdMenu(activeMessageIdMenu === msg.id ? null : msg.id)}
-                        className="p-1.5 rounded-full hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60 transition-all text-neutral-400 hover:text-rose-gold-500 cursor-pointer"
+                        className="p-1.5 rounded-full hover:bg-white/10 transition-all text-neutral-500 hover:text-rose-gold-400 cursor-pointer"
                         title={lang === 'ar' ? 'تفاعلات وخيارات' : 'Reactions & Options'}
                       >
                         <Smile size={14} />
                       </button>
                       <button 
                         onClick={() => handleDeleteMessage(msg.id)}
-                        className="p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-950/40 text-neutral-400 hover:text-red-500 transition-all cursor-pointer"
+                        className="p-1.5 rounded-full hover:bg-red-950/40 text-neutral-500 hover:text-red-400 transition-all cursor-pointer"
                         title={lang === 'ar' ? 'حذف الرسالة' : 'Delete message'}
                       >
                         <Trash2 size={14} />
@@ -648,15 +673,24 @@ export default function ChatSection({
                   )}
 
                   {/* Bubble */}
-                  <div className={`rounded-3xl p-3.5 shadow-sm transition-all relative ${
+                  <div className={`p-3.5 shadow-sm transition-all relative ${
                     isMe 
-                      ? 'bg-rose-gold-500 text-white rounded-tr-none' 
-                      : 'bg-white/80 dark:bg-neutral-900/80 text-neutral-900 dark:text-neutral-100 rounded-tl-none border border-white/20 dark:border-white/5'
+                      ? 'bg-gradient-to-br from-rose-gold-500 to-rose-gold-600 text-white rounded-[24px] rounded-tr-[6px]' 
+                      : 'bg-[#171013] text-neutral-100 rounded-[24px] rounded-tl-[6px] border border-white/8'
                   }`}>
                     
+                    {/* Important message badge */}
+                    {msg.isPinned && (
+                      <span className={`inline-flex items-center gap-1 mb-1.5 text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                        isMe ? 'bg-white/20 text-white' : 'bg-rose-gold-500/15 text-rose-gold-300'
+                      }`}>
+                        ❤️ {lang === 'ar' ? 'رسالة مميزة' : 'Special message'}
+                      </span>
+                    )}
+
                     {/* If editing, show indicator */}
                     {msg.isEdited && (
-                      <span className="absolute -top-1.5 right-2 bg-neutral-200 dark:bg-neutral-800 text-neutral-500 text-[8px] font-bold px-1.5 py-0.2 rounded-full uppercase scale-90">
+                      <span className="absolute -top-1.5 right-2 bg-neutral-800 text-neutral-400 text-[8px] font-bold px-1.5 py-0.2 rounded-full uppercase scale-90">
                         {lang === 'ar' ? 'معدلة' : 'edited'}
                       </span>
                     )}
@@ -713,7 +747,7 @@ export default function ChatSection({
                         className={`rounded-2xl p-3 mb-2 border transition-all duration-300 transform hover:scale-[1.01] active:scale-[0.99] cursor-pointer text-left rtl:text-right ${
                           isMe
                             ? 'bg-white/20 hover:bg-white/30 border-white/30 text-white'
-                            : 'bg-rose-gold-50/55 dark:bg-rose-gold-950/10 hover:bg-rose-gold-100/50 border-rose-gold-200 dark:border-rose-950 text-neutral-900 dark:text-neutral-100'
+                            : 'bg-rose-gold-500/10 hover:bg-rose-gold-500/15 border-rose-gold-500/20 text-neutral-100'
                         }`}
                       >
                         <div className="flex gap-2 items-start">
@@ -766,7 +800,7 @@ export default function ChatSection({
 
                     {/* Reactions Display */}
                     {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                      <div className="absolute -bottom-2 right-2 flex gap-1 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 px-1.5 py-0.5 rounded-full shadow-md scale-95 z-10">
+                      <div className="absolute -bottom-2 right-2 flex gap-1 bg-[#1c1416] border border-white/10 px-1.5 py-0.5 rounded-full shadow-md scale-95 z-10">
                         {Object.entries(msg.reactions).map(([role, emoji]) => (
                           <span 
                             key={role} 
@@ -780,7 +814,7 @@ export default function ChatSection({
                     )}
 
                     {/* Time & Send Badge */}
-                    <div className={`text-[8px] mt-1.5 text-right font-semibold font-mono tracking-wider opacity-60 ${isMe ? 'text-white' : 'text-neutral-500'}`}>
+                    <div className={`text-[8px] mt-1.5 text-right font-semibold font-mono tracking-wider ${isMe ? 'text-white/70' : 'text-[#8E7D83]'}`}>
                       {formatTimeAgo(msg.timestamp, lang)}
                     </div>
                   </div>
@@ -790,14 +824,14 @@ export default function ChatSection({
                     <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => handleDeleteMessage(msg.id)}
-                        className="p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-950/40 text-neutral-400 hover:text-red-500 transition-all cursor-pointer"
+                        className="p-1.5 rounded-full hover:bg-red-950/40 text-neutral-500 hover:text-red-400 transition-all cursor-pointer"
                         title={lang === 'ar' ? 'حذف الرسالة' : 'Delete message'}
                       >
                         <Trash2 size={14} />
                       </button>
                       <button 
                         onClick={() => setActiveMessageIdMenu(activeMessageIdMenu === msg.id ? null : msg.id)}
-                        className="p-1.5 rounded-full hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60 transition-all text-neutral-400 hover:text-rose-gold-500 cursor-pointer"
+                        className="p-1.5 rounded-full hover:bg-white/10 transition-all text-neutral-500 hover:text-rose-gold-400 cursor-pointer"
                         title={lang === 'ar' ? 'تفاعلات وخيارات' : 'Reactions & Options'}
                       >
                         <Smile size={14} />
@@ -808,20 +842,20 @@ export default function ChatSection({
 
                 {/* POPUP OPTIONS MENU FOR INDIVIDUAL MESSAGES */}
                 {activeMessageIdMenu === msg.id && (
-                  <div className={`mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-2.5 shadow-lg flex flex-col gap-1.5 z-20 min-w-[160px] animate-fade-in ${
+                  <div className={`mt-1 bg-[#171013] border border-white/10 rounded-3xl p-2.5 shadow-lg flex flex-col gap-1.5 z-20 min-w-[160px] animate-fade-in ${
                     isMe ? 'self-end ml-auto' : 'self-start mr-auto'
                   }`}>
                     
                     {/* Reactions Bar inside menu */}
-                    <div className="flex justify-between items-center border-b border-neutral-100 dark:border-neutral-800 pb-1.5 mb-1.5 gap-1">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-1.5 mb-1.5 gap-1">
                       {EMOJI_PRESETS.map(emoji => {
                         const hasReacted = msg.reactions?.[currentUserRole] === emoji;
                         return (
                           <button 
                             key={emoji}
                             onClick={() => handleReactToMessage(msg.id, hasReacted ? null : emoji)}
-                            className={`p-1.5 text-sm rounded-full transition-all transform hover:scale-125 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-                              hasReacted ? 'bg-rose-gold-100 dark:bg-rose-gold-950/40 border border-rose-gold-400' : ''
+                            className={`p-1.5 text-sm rounded-full transition-all transform hover:scale-125 hover:bg-white/10 ${
+                              hasReacted ? 'bg-rose-gold-500/20 border border-rose-gold-400' : ''
                             }`}
                           >
                             {emoji}
@@ -837,7 +871,7 @@ export default function ChatSection({
                           setReplyingTo(msg);
                           setActiveMessageIdMenu(null);
                         }}
-                        className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 transition-colors"
+                        className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/10 text-neutral-300 transition-colors"
                       >
                         <Reply size={12} />
                         <span>{lang === 'ar' ? 'رد' : 'Reply'}</span>
@@ -847,7 +881,7 @@ export default function ChatSection({
                       {(msg.text || msg.mediaUrl) && (
                         <button 
                           onClick={() => handleSaveToMemory(msg)}
-                          className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-rose-gold-500 transition-colors"
+                          className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/10 text-rose-gold-400 transition-colors"
                         >
                           <Star size={12} fill="currentColor" />
                           <span>{lang === 'ar' ? 'حفظ كذكرى' : 'Save memory'}</span>
@@ -857,7 +891,7 @@ export default function ChatSection({
                       {/* Pin/Unpin */}
                       <button 
                         onClick={() => handleTogglePinMessage(msg)}
-                        className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 transition-colors"
+                        className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/10 text-neutral-300 transition-colors"
                       >
                         <Pin size={12} className="rotate-45" />
                         <span>{msg.isPinned ? (lang === 'ar' ? 'إلغاء التثبيت' : 'Unpin') : (lang === 'ar' ? 'تثبيت' : 'Pin')}</span>
@@ -871,7 +905,7 @@ export default function ChatSection({
                             setInputText(msg.text || '');
                             setActiveMessageIdMenu(null);
                           }}
-                          className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 transition-colors"
+                          className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-white/10 text-neutral-300 transition-colors"
                         >
                           <Edit2 size={12} />
                           <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
@@ -881,7 +915,7 @@ export default function ChatSection({
                       {/* Delete Message Button */}
                       <button 
                         onClick={() => handleDeleteMessage(msg.id)}
-                        className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 transition-colors col-span-2 font-bold"
+                        className="flex items-center gap-1.5 p-1.5 rounded-xl hover:bg-red-950/20 text-red-400 transition-colors col-span-2 font-bold"
                       >
                         <Trash2 size={12} />
                         <span>{lang === 'ar' ? 'حذف الرسالة 🗑️' : 'Delete Message 🗑️'}</span>
@@ -890,18 +924,20 @@ export default function ChatSection({
                   </div>
                 )}
               </div>
+              </React.Fragment>
             );
-          })
+          });
+          })()
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* CHAT BOTTOM INPUT */}
-      <div className="p-3 border-t border-white/20 dark:border-neutral-900 bg-white/40 dark:bg-black/20 backdrop-blur-md z-10 shrink-0">
+      <div className="p-3 border-t border-white/5 bg-[rgba(20,12,15,0.82)] backdrop-blur-md z-10 shrink-0">
         
         {/* Reply Preview Banner inside Input area */}
         {replyingTo && (
-          <div className="flex justify-between items-center bg-neutral-200/50 dark:bg-neutral-800/50 rounded-2xl px-3 py-1.5 mb-2 border-l-4 border-rose-gold-400 text-xs text-neutral-600 dark:text-neutral-300 animate-fade-in font-medium">
+          <div className="flex justify-between items-center bg-white/5 rounded-2xl px-3 py-1.5 mb-2 border-l-4 border-rose-gold-400/70 text-xs text-neutral-300 animate-fade-in font-medium">
             <div className="truncate pr-4 flex items-center gap-1.5">
               <Reply size={10} />
               <span>{lang === 'ar' ? 'الرد على' : 'Replying to'}</span>
@@ -910,7 +946,7 @@ export default function ChatSection({
                 {replyingTo.text || `[${replyingTo.mediaType || 'Card'}]`}
               </span>
             </div>
-            <button onClick={() => setReplyingTo(null)} className="text-neutral-400 hover:text-neutral-600">
+            <button onClick={() => setReplyingTo(null)} className="text-neutral-500 hover:text-neutral-300">
               <X size={14} />
             </button>
           </div>
@@ -918,7 +954,7 @@ export default function ChatSection({
 
         {/* Edit Preview Banner */}
         {editingMsg && (
-          <div className="flex justify-between items-center bg-rose-gold-50/50 dark:bg-rose-gold-950/20 rounded-2xl px-3 py-1.5 mb-2 border-l-4 border-rose-gold-500 text-xs text-rose-gold-600 dark:text-rose-gold-300 animate-fade-in font-medium">
+          <div className="flex justify-between items-center bg-rose-gold-500/10 rounded-2xl px-3 py-1.5 mb-2 border-l-4 border-rose-gold-500 text-xs text-rose-gold-300 animate-fade-in font-medium">
             <div className="truncate pr-4 flex items-center gap-1.5">
               <Edit2 size={10} />
               <span>{lang === 'ar' ? 'تعديل رسالتك:' : 'Editing your message:'}</span>
@@ -929,7 +965,7 @@ export default function ChatSection({
                 setEditingMsg(null);
                 setInputText('');
               }} 
-              className="text-neutral-400 hover:text-neutral-600"
+              className="text-neutral-500 hover:text-neutral-300"
             >
               <X size={14} />
             </button>
@@ -949,7 +985,7 @@ export default function ChatSection({
             className={`p-2.5 rounded-full transition-all border ${
               showSharePicker 
                 ? 'bg-rose-gold-500 text-white border-rose-gold-500' 
-                : 'bg-white/40 dark:bg-black/30 text-neutral-500 dark:text-neutral-400 border-neutral-300/40 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                : 'bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10'
             }`}
             title={lang === 'ar' ? 'مشاركة بطاقة 💌' : 'Share card 💌'}
           >
@@ -966,7 +1002,7 @@ export default function ChatSection({
             className={`p-2.5 rounded-full transition-all border ${
               showEmojiPicker 
                 ? 'bg-rose-gold-500 text-white border-rose-gold-500' 
-                : 'bg-white/40 dark:bg-black/30 text-neutral-500 dark:text-neutral-400 border-neutral-300/40 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                : 'bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10'
             }`}
             title={lang === 'ar' ? 'رموز تعبيرية 🌸' : 'Emoji picker 🌸'}
           >
@@ -1012,7 +1048,7 @@ export default function ChatSection({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSendText();
                 }}
-                className="w-full text-xs py-2 px-4 rounded-full bg-white/50 dark:bg-black/40 border border-neutral-300/40 focus:outline-none focus:border-rose-gold-400 font-medium text-neutral-800 dark:text-neutral-100"
+                className="w-full text-xs py-2 px-4 rounded-full bg-white/5 border border-white/10 focus:outline-none focus:border-rose-gold-400/60 font-medium text-neutral-100 placeholder:text-neutral-500"
               />
             )}
           </div>
@@ -1025,14 +1061,14 @@ export default function ChatSection({
               <button 
                 type="button"
                 onClick={startRecording}
-                className="p-2.5 rounded-full bg-white/40 dark:bg-black/30 text-neutral-500 dark:text-neutral-400 border border-neutral-300/40 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
+                className="p-2.5 rounded-full bg-white/5 text-neutral-300 border border-white/10 hover:bg-white/10 transition-colors"
                 title={lang === 'ar' ? 'تسجيل رسالة صوتية 🎙️' : 'Record voice 🎙️'}
               >
                 <Mic size={16} />
               </button>
 
               {/* Photo Upload Hidden Input */}
-              <label className="p-2.5 rounded-full bg-white/40 dark:bg-black/30 text-neutral-500 dark:text-neutral-400 border border-neutral-300/40 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
+              <label className="p-2.5 rounded-full bg-white/5 text-neutral-300 border border-white/10 hover:bg-white/10 cursor-pointer transition-colors">
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -1043,7 +1079,7 @@ export default function ChatSection({
               </label>
 
               {/* Video Upload Hidden Input */}
-              <label className="p-2.5 rounded-full bg-white/40 dark:bg-black/30 text-neutral-500 dark:text-neutral-400 border border-neutral-300/40 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer transition-colors">
+              <label className="p-2.5 rounded-full bg-white/5 text-neutral-300 border border-white/10 hover:bg-white/10 cursor-pointer transition-colors">
                 <input 
                   type="file" 
                   accept="video/*" 
@@ -1059,7 +1095,7 @@ export default function ChatSection({
           {(inputText.trim() || editingMsg) && !isRecording && (
             <button 
               onClick={handleSendText}
-              className="p-2.5 rounded-full bg-rose-gold-500 text-white hover:bg-rose-gold-600 transition-all shadow-md active:scale-95"
+              className="p-2.5 rounded-full bg-gradient-to-br from-rose-gold-500 to-rose-gold-600 text-white hover:from-rose-gold-600 hover:to-rose-gold-700 transition-all shadow-md active:scale-95"
               title={lang === 'ar' ? 'إرسال ⚡' : 'Send ⚡'}
             >
               <Send size={16} />
@@ -1075,9 +1111,9 @@ export default function ChatSection({
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 15 }}
-              className="mt-3 p-3 bg-white/90 dark:bg-neutral-900/90 border border-neutral-200 dark:border-neutral-800 rounded-3xl flex justify-between items-center gap-1.5 flex-wrap max-w-full"
+              className="mt-3 p-3 bg-[#171013]/95 border border-white/10 rounded-3xl flex justify-between items-center gap-1.5 flex-wrap max-w-full"
             >
-              <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider pl-1.5">{lang === 'ar' ? 'سريعة:' : 'Quick:'}</span>
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider pl-1.5">{lang === 'ar' ? 'سريعة:' : 'Quick:'}</span>
               {EMOJI_PRESETS.map(emoji => (
                 <button 
                   key={emoji}
@@ -1085,7 +1121,7 @@ export default function ChatSection({
                     setInputText(prev => prev + emoji);
                     setShowEmojiPicker(false);
                   }}
-                  className="p-1.5 text-base rounded-full hover:bg-rose-gold-50/50 dark:hover:bg-neutral-800 transition-all transform hover:scale-125"
+                  className="p-1.5 text-base rounded-full hover:bg-white/10 transition-all transform hover:scale-125"
                 >
                   {emoji}
                 </button>
@@ -1101,10 +1137,10 @@ export default function ChatSection({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="mt-3 p-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-[28px] max-h-72 overflow-y-auto flex flex-col gap-3 relative shadow-inner"
+              className="mt-3 p-4 bg-[#171013] border border-white/10 rounded-[28px] max-h-72 overflow-y-auto flex flex-col gap-3 relative shadow-inner"
             >
               {/* Category tabs inside card selector */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1 border-b border-neutral-100 dark:border-neutral-800 select-none shrink-0 scrollbar-none text-[10px] font-bold uppercase tracking-wide">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 border-b border-white/10 select-none shrink-0 scrollbar-none text-[10px] font-bold uppercase tracking-wide">
                 {[
                   { key: 'memories', label: lang === 'ar' ? 'ذكرياتنا' : 'Memories', icon: '💖' },
                   { key: 'photos', label: lang === 'ar' ? 'الصور' : 'Photos', icon: '📸' },
@@ -1120,7 +1156,7 @@ export default function ChatSection({
                     className={`flex items-center gap-1.5 py-1.5 px-3 rounded-full border transition-all shrink-0 ${
                       shareCategory === cat.key 
                         ? 'bg-rose-gold-500 text-white border-rose-gold-500 shadow-sm' 
-                        : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-200/50 hover:bg-neutral-200/40'
+                        : 'bg-white/5 text-neutral-300 border-white/10 hover:bg-white/10'
                     }`}
                   >
                     <span>{cat.icon}</span>
@@ -1136,13 +1172,13 @@ export default function ChatSection({
                   <button 
                     key={`sh-mem-${item.id || idx}-${idx}`}
                     onClick={() => handleShareItem('memory', item.id, item.title, item.content.substring(0, 50) + '...', item.imageUrl)}
-                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-rose-gold-50/40 dark:hover:bg-rose-gold-950/10 border border-neutral-100 dark:border-neutral-800 transition-all font-medium text-xs leading-normal"
+                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-white/5 hover:bg-rose-gold-500/10 border border-white/10 transition-all font-medium text-xs leading-normal"
                   >
                     {item.imageUrl && (
                       <img src={item.imageUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-xl object-cover shrink-0" alt="" />
                     )}
                     <div className="min-w-0">
-                      <h4 className="font-serif font-bold text-neutral-900 dark:text-neutral-50 truncate">{item.title}</h4>
+                      <h4 className="font-serif font-bold text-neutral-50 truncate">{item.title}</h4>
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">{item.content}</p>
                     </div>
                   </button>
@@ -1153,11 +1189,11 @@ export default function ChatSection({
                   <button 
                     key={`sh-pho-${item.id || idx}-${idx}`}
                     onClick={() => handleShareItem('photo', item.id, item.caption || (lang === 'ar' ? 'صورة رومانسية لنا 📸' : 'Romantic Photo 📸'), item.date, item.url)}
-                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-rose-gold-50/40 dark:hover:bg-rose-gold-950/10 border border-neutral-100 dark:border-neutral-800 transition-all font-medium text-xs leading-normal"
+                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-white/5 hover:bg-rose-gold-500/10 border border-white/10 transition-all font-medium text-xs leading-normal"
                   >
                     <img src={item.url} referrerPolicy="no-referrer" className="w-10 h-10 rounded-xl object-cover shrink-0" alt="" />
                     <div className="min-w-0">
-                      <h4 className="font-serif font-bold text-neutral-900 dark:text-neutral-50 truncate">
+                      <h4 className="font-serif font-bold text-neutral-50 truncate">
                         {item.caption || (lang === 'ar' ? 'صورة للذكرى' : 'Gallery Photo')}
                       </h4>
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">{item.date}</p>
@@ -1170,11 +1206,11 @@ export default function ChatSection({
                   <button 
                     key={`sh-vid-${item.id || idx}-${idx}`}
                     onClick={() => handleShareItem('reel', item.id, item.title || (lang === 'ar' ? 'فيديو ريل مميز 📽️' : 'Video Reel 📽️'), item.date)}
-                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-rose-gold-50/40 dark:hover:bg-rose-gold-950/10 border border-neutral-100 dark:border-neutral-800 transition-all font-medium text-xs leading-normal"
+                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-white/5 hover:bg-rose-gold-500/10 border border-white/10 transition-all font-medium text-xs leading-normal"
                   >
-                    <span className="text-xl p-2 bg-neutral-200 dark:bg-neutral-800 rounded-xl shrink-0">🎬</span>
+                    <span className="text-xl p-2 bg-white/10 rounded-xl shrink-0">🎬</span>
                     <div className="min-w-0">
-                      <h4 className="font-serif font-bold text-neutral-900 dark:text-neutral-50 truncate">
+                      <h4 className="font-serif font-bold text-neutral-50 truncate">
                         {item.title || (lang === 'ar' ? 'ريل حب' : 'Love Reel')}
                       </h4>
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">{item.date}</p>
@@ -1187,15 +1223,15 @@ export default function ChatSection({
                   <button 
                     key={`sh-sng-${item.id || idx}-${idx}`}
                     onClick={() => handleShareItem('song', item.id, item.title, item.artist, item.coverUrl)}
-                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-rose-gold-50/40 dark:hover:bg-rose-gold-950/10 border border-neutral-100 dark:border-neutral-800 transition-all font-medium text-xs leading-normal"
+                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-white/5 hover:bg-rose-gold-500/10 border border-white/10 transition-all font-medium text-xs leading-normal"
                   >
                     {item.coverUrl ? (
                       <img src={item.coverUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-xl object-cover shrink-0" alt="" />
                     ) : (
-                      <span className="text-xl p-2 bg-neutral-200 dark:bg-neutral-800 rounded-xl shrink-0">🎵</span>
+                      <span className="text-xl p-2 bg-white/10 rounded-xl shrink-0">🎵</span>
                     )}
                     <div className="min-w-0">
-                      <h4 className="font-serif font-bold text-neutral-900 dark:text-neutral-50 truncate">{item.title}</h4>
+                      <h4 className="font-serif font-bold text-neutral-50 truncate">{item.title}</h4>
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">{item.artist}</p>
                     </div>
                   </button>
@@ -1206,11 +1242,11 @@ export default function ChatSection({
                   <button 
                     key={`sh-dq-${item.id || idx}-${idx}`}
                     onClick={() => handleShareItem('daily_question', item.id, lang === 'ar' ? item.questionAr : item.questionEn, item.dateStr)}
-                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-rose-gold-50/40 dark:hover:bg-rose-gold-950/10 border border-neutral-100 dark:border-neutral-800 transition-all font-medium text-xs leading-normal"
+                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-white/5 hover:bg-rose-gold-500/10 border border-white/10 transition-all font-medium text-xs leading-normal"
                   >
-                    <span className="text-xl p-2 bg-neutral-200 dark:bg-neutral-800 rounded-xl shrink-0">❓</span>
+                    <span className="text-xl p-2 bg-white/10 rounded-xl shrink-0">❓</span>
                     <div className="min-w-0">
-                      <h4 className="font-serif font-bold text-neutral-900 dark:text-neutral-50 truncate">
+                      <h4 className="font-serif font-bold text-neutral-50 truncate">
                         {lang === 'ar' ? item.questionAr : item.questionEn}
                       </h4>
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">{item.dateStr}</p>
@@ -1223,11 +1259,11 @@ export default function ChatSection({
                   <button 
                     key={`sh-env-${item.id || idx}-${idx}`}
                     onClick={() => handleShareItem('envelope', item.id, lang === 'ar' ? item.titleAr : item.titleEn, lang === 'ar' ? 'خطاب افتح عندما...' : 'Open when letter')}
-                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-rose-gold-50/40 dark:hover:bg-rose-gold-950/10 border border-neutral-100 dark:border-neutral-800 transition-all font-medium text-xs leading-normal"
+                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-white/5 hover:bg-rose-gold-500/10 border border-white/10 transition-all font-medium text-xs leading-normal"
                   >
-                    <span className="text-xl p-2 bg-neutral-200 dark:bg-neutral-800 rounded-xl shrink-0">{item.emoji || '✉️'}</span>
+                    <span className="text-xl p-2 bg-white/10 rounded-xl shrink-0">{item.emoji || '✉️'}</span>
                     <div className="min-w-0">
-                      <h4 className="font-serif font-bold text-neutral-900 dark:text-neutral-50 truncate">
+                      <h4 className="font-serif font-bold text-neutral-50 truncate">
                         {lang === 'ar' ? item.titleAr : item.titleEn}
                       </h4>
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">
@@ -1247,11 +1283,11 @@ export default function ChatSection({
                   <button 
                     key={item.id}
                     onClick={() => handleShareItem('achievement', item.id, lang === 'ar' ? item.titleAr : item.titleEn, item.desc)}
-                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-neutral-50 dark:bg-neutral-800/40 hover:bg-rose-gold-50/40 dark:hover:bg-rose-gold-950/10 border border-neutral-100 dark:border-neutral-800 transition-all font-medium text-xs leading-normal"
+                    className="flex text-start gap-2.5 p-2 rounded-2xl bg-white/5 hover:bg-rose-gold-500/10 border border-white/10 transition-all font-medium text-xs leading-normal"
                   >
-                    <span className="text-xl p-2 bg-neutral-200 dark:bg-neutral-800 rounded-xl shrink-0">⭐</span>
+                    <span className="text-xl p-2 bg-white/10 rounded-xl shrink-0">⭐</span>
                     <div className="min-w-0">
-                      <h4 className="font-serif font-bold text-neutral-900 dark:text-neutral-50 truncate">
+                      <h4 className="font-serif font-bold text-neutral-50 truncate">
                         {lang === 'ar' ? item.titleAr : item.titleEn}
                       </h4>
                       <p className="text-[10px] text-neutral-400 truncate mt-0.5">{item.desc}</p>
