@@ -1107,21 +1107,39 @@ export default function ChatMemoriesSection({
 
       {/* ===================== DETAIL VIEW (WhatsApp-style) ===================== */}
       {viewMode === 'detail' && selectedConversation && (
-        <div className="flex flex-col h-[calc(100vh-140px)] max-w-3xl mx-auto rounded-[36px] glass border border-white/20 dark:border-white/5 overflow-hidden shadow-xl relative">
-          {/* Header */}
-          <div className="p-4 border-b border-white/20 dark:border-neutral-900 bg-white/40 dark:bg-black/20 backdrop-blur-md flex justify-between items-center z-10 shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
+        <div
+          className="flex flex-col h-[calc(100vh-140px)] max-w-3xl mx-auto rounded-[28px] overflow-hidden shadow-2xl relative"
+          style={{ backgroundColor: '#0b141a' }}
+        >
+          {/* WhatsApp-style Header */}
+          <div
+            className="p-3 flex items-center justify-between z-10 shrink-0"
+            style={{ backgroundColor: '#005c4b' }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={backToList}
-                className="p-2 rounded-full hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 text-neutral-500 transition-all cursor-pointer shrink-0"
+                className="p-1.5 rounded-full hover:bg-white/10 text-white/90 transition-all cursor-pointer shrink-0"
               >
-                {lang === 'ar' ? <ArrowRight size={16} /> : <ArrowLeft size={16} />}
+                {lang === 'ar' ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
               </button>
+              {selectedConversation.coverImage ? (
+                <img
+                  src={selectedConversation.coverImage}
+                  referrerPolicy="no-referrer"
+                  className="w-9 h-9 rounded-full object-cover shrink-0"
+                  alt=""
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                  {selectedConversation.title?.charAt(0) || '💬'}
+                </div>
+              )}
               <div className="min-w-0">
-                <h4 className="font-serif text-sm font-bold text-neutral-900 dark:text-neutral-50 truncate">
+                <h4 className="text-sm font-bold text-white truncate leading-tight">
                   {selectedConversation.title}
                 </h4>
-                <p className="text-[10px] text-neutral-400 font-semibold">
+                <p className="text-[10.5px] text-white/70 leading-tight">
                   {t('سعيد', 'Saeed')} ❤️ {t('سهيلة', 'Sohila')} · {selectedConversation.messages.length} {t('رسالة', 'messages')}
                 </p>
               </div>
@@ -1129,34 +1147,49 @@ export default function ChatMemoriesSection({
             <div className="flex items-center gap-1 shrink-0">
               <button
                 onClick={() => setShowImportantOnly((v) => !v)}
-                className={`p-2 rounded-full transition-all cursor-pointer flex items-center gap-1 text-[10px] font-bold ${
-                  showImportantOnly
-                    ? 'bg-amber-400/20 text-amber-500'
-                    : 'hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 text-neutral-400'
+                className={`p-2 rounded-full transition-all cursor-pointer ${
+                  showImportantOnly ? 'text-amber-300' : 'text-white/85 hover:bg-white/10'
                 }`}
                 title={t('الرسائل المهمة', 'Important messages')}
               >
-                <Star size={16} className={showImportantOnly ? 'fill-amber-400' : ''} />
+                <Star size={17} className={showImportantOnly ? 'fill-amber-300' : ''} />
               </button>
               <button
                 onClick={() => openEditMeta(selectedConversation)}
-                className="p-2 rounded-full hover:bg-neutral-200/50 dark:hover:bg-neutral-800/50 text-neutral-400 transition-all cursor-pointer"
+                className="p-2 rounded-full hover:bg-white/10 text-white/85 transition-all cursor-pointer"
               >
-                <Edit2 size={15} />
+                <Edit2 size={16} />
               </button>
               <button
                 onClick={() => handleDeleteConversation(selectedConversation)}
-                className="p-2 rounded-full hover:bg-red-100 dark:hover:bg-red-950/40 text-neutral-400 hover:text-red-500 transition-all cursor-pointer"
+                className="p-2 rounded-full hover:bg-white/10 text-white/85 hover:text-red-300 transition-all cursor-pointer"
               >
-                <Trash2 size={15} />
+                <Trash2 size={16} />
               </button>
             </div>
           </div>
 
+          {/* Encryption-style banner (decorative, matches WhatsApp identity) */}
+          {!showImportantOnly && (
+            <div className="flex justify-center px-4 pt-3 pb-1 shrink-0">
+              <div className="max-w-md text-center bg-[#182229] rounded-xl px-4 py-2.5 flex flex-col items-center gap-1">
+                <span className="text-[11.5px] font-bold text-[#ffd279] flex items-center gap-1.5">
+                  🔒 {t('ذكرى محفوظة من محادثتكم', 'A memory saved from your conversation')}
+                </span>
+                <span className="text-[10px] text-neutral-400 leading-relaxed">
+                  {t(
+                    'محفوظة هنا بتصميم شبيه بواتساب، كما حدثت بالفعل بينكما.',
+                    'Kept here in a WhatsApp-style layout, just as it really happened between you two.'
+                  )}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Important-only filtered list */}
           {showImportantOnly ? (
-            <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-white/5 dark:bg-black/10">
-              <p className="text-[10px] uppercase tracking-wider font-mono font-bold text-amber-500 mb-2">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2" style={{ backgroundColor: '#0b141a' }}>
+              <p className="text-[10px] uppercase tracking-wider font-mono font-bold text-amber-400 mb-2">
                 ⭐ {t('الرسائل المهمة', 'Important Messages')} ({importantMessages.length})
               </p>
               {importantMessages.length === 0 ? (
@@ -1171,15 +1204,15 @@ export default function ChatMemoriesSection({
                     className="w-full text-start p-3 rounded-2xl bg-amber-400/5 hover:bg-amber-400/10 border border-amber-400/20 transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">{nameOf(m.sender)}</span>
-                      <span className="text-[9px] font-mono text-neutral-400">
+                      <span className="text-[10px] font-bold text-amber-400">{nameOf(m.sender)}</span>
+                      <span className="text-[9px] font-mono text-neutral-500">
                         {new Date(m.timestamp).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', {
                           dateStyle: 'medium',
                           timeStyle: 'short'
                         })}
                       </span>
                     </div>
-                    <p className="text-xs text-neutral-700 dark:text-neutral-300 truncate">
+                    <p className="text-xs text-neutral-300 truncate">
                       {m.text || `[${m.mediaType}]`}
                     </p>
                   </button>
@@ -1187,10 +1220,19 @@ export default function ChatMemoriesSection({
               )}
             </div>
           ) : (
-            /* Full chat view */
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white/5 dark:bg-black/10">
+            /* Full chat view — WhatsApp-style wallpaper background */
+            <div
+              className="flex-1 overflow-y-auto p-4 space-y-1.5"
+              style={{
+                backgroundColor: '#0b141a',
+                backgroundImage:
+                  'radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px)',
+                backgroundSize: '26px 26px, 26px 26px',
+                backgroundPosition: '0 0, 13px 13px'
+              }}
+            >
               {detailMessagesSorted.length === 0 ? (
-                <div className="h-full flex flex-col justify-center items-center text-center p-8 text-neutral-400">
+                <div className="h-full flex flex-col justify-center items-center text-center p-8 text-neutral-500">
                   <div className="text-4xl mb-2">💌</div>
                   <p className="text-xs font-medium">
                     {t('لسه مفيش رسائل في المحادثة دي. أضف أول رسالة تحت 👇', 'No messages yet. Add the first one below 👇')}
@@ -1198,9 +1240,9 @@ export default function ChatMemoriesSection({
                 </div>
               ) : (
                 groupedByDay.map((group) => (
-                  <div key={group.dateKey} className="space-y-4">
-                    <div className="flex justify-center">
-                      <span className="text-[10px] font-bold text-neutral-500 bg-white/60 dark:bg-black/30 px-3 py-1 rounded-full shadow-sm">
+                  <div key={group.dateKey} className="space-y-1.5">
+                    <div className="flex justify-center py-1.5">
+                      <span className="text-[11.5px] font-medium text-neutral-300 bg-[#182229] px-3 py-1 rounded-lg shadow-sm">
                         {formatDateLabel(group.dateKey)}
                       </span>
                     </div>
@@ -1211,12 +1253,12 @@ export default function ChatMemoriesSection({
                         <div
                           key={msg.id}
                           id={`chatmem-msg-${msg.id}`}
-                          className={`flex flex-col max-w-[80%] ${
+                          className={`flex flex-col max-w-[78%] mb-1 ${
                             isMe ? 'self-end ml-auto rtl:mr-auto rtl:ml-0' : 'self-start mr-auto rtl:ml-auto rtl:mr-0'
                           }`}
                         >
                           {isEditing && editingMessageDraft ? (
-                            <div className="rounded-2xl p-3 bg-white/80 dark:bg-neutral-900/80 border border-rose-gold-300 space-y-2 min-w-[220px]">
+                            <div className="rounded-2xl p-3 border space-y-2 min-w-[220px]" style={{ backgroundColor: '#202c33', borderColor: 'rgba(255,255,255,0.1)' }}>
                               <div className="flex gap-2">
                                 <input
                                   type="date"
@@ -1224,7 +1266,7 @@ export default function ChatMemoriesSection({
                                   onChange={(e) =>
                                     setEditingMessageDraft((p) => (p ? { ...p, dateStr: e.target.value } : p))
                                   }
-                                  className="flex-1 text-[10px] py-1 px-2 rounded-lg bg-white/60 dark:bg-black/30 border border-neutral-300/30"
+                                  className="flex-1 text-[10px] py-1 px-2 rounded-lg bg-[#2a3942] border border-white/10 text-neutral-200"
                                 />
                                 <input
                                   type="time"
@@ -1232,7 +1274,7 @@ export default function ChatMemoriesSection({
                                   onChange={(e) =>
                                     setEditingMessageDraft((p) => (p ? { ...p, timeStr: e.target.value } : p))
                                   }
-                                  className="flex-1 text-[10px] py-1 px-2 rounded-lg bg-white/60 dark:bg-black/30 border border-neutral-300/30"
+                                  className="flex-1 text-[10px] py-1 px-2 rounded-lg bg-[#2a3942] border border-white/10 text-neutral-200"
                                 />
                               </div>
                               <textarea
@@ -1242,7 +1284,7 @@ export default function ChatMemoriesSection({
                                   setEditingMessageDraft((p) => (p ? { ...p, text: e.target.value } : p))
                                 }
                                 rows={2}
-                                className="w-full text-xs py-1.5 px-2.5 rounded-lg bg-white/60 dark:bg-black/30 border border-neutral-300/30 resize-none"
+                                className="w-full text-xs py-1.5 px-2.5 rounded-lg bg-[#2a3942] border border-white/10 text-neutral-100 resize-none"
                               />
                               <div className="flex gap-1.5">
                                 <button
@@ -1250,13 +1292,14 @@ export default function ChatMemoriesSection({
                                     setEditingMessageId(null);
                                     setEditingMessageDraft(null);
                                   }}
-                                  className="flex-1 text-[10px] font-bold py-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-800 text-neutral-500"
+                                  className="flex-1 text-[10px] font-bold py-1.5 rounded-lg bg-white/10 text-neutral-300"
                                 >
                                   {t('إلغاء', 'Cancel')}
                                 </button>
                                 <button
                                   onClick={saveEditMessage}
-                                  className="flex-1 text-[10px] font-bold py-1.5 rounded-lg bg-rose-gold-500 text-white flex items-center justify-center gap-1"
+                                  className="flex-1 text-[10px] font-bold py-1.5 rounded-lg text-white flex items-center justify-center gap-1"
+                                  style={{ backgroundColor: '#00a884' }}
                                 >
                                   <Check size={11} /> {t('حفظ', 'Save')}
                                 </button>
@@ -1275,11 +1318,12 @@ export default function ChatMemoriesSection({
                                 </div>
                               )}
                               <div
-                                className={`rounded-3xl p-3.5 shadow-sm relative ${
+                                className={`p-2.5 px-3 shadow-sm relative ${
                                   isMe
-                                    ? 'bg-rose-gold-500 text-white rounded-tr-none'
-                                    : 'bg-white/80 dark:bg-neutral-900/80 text-neutral-900 dark:text-neutral-100 rounded-tl-none border border-white/20 dark:border-white/5'
+                                    ? 'text-white rounded-lg rounded-tr-sm'
+                                    : 'text-[#e9edef] rounded-lg rounded-tl-sm'
                                 }`}
+                                style={{ backgroundColor: isMe ? '#005c4b' : '#202c33' }}
                               >
                                 {msg.isImportant && (
                                   <span className="absolute -top-2 -right-2 bg-amber-400 text-white rounded-full p-1 shadow">
@@ -1287,17 +1331,17 @@ export default function ChatMemoriesSection({
                                   </span>
                                 )}
                                 {msg.mediaType === 'image' && msg.mediaUrl && (
-                                  <div className="mb-2 rounded-2xl overflow-hidden max-w-xs max-h-60 border border-white/10">
+                                  <div className="mb-1.5 rounded-lg overflow-hidden max-w-xs max-h-60">
                                     <img src={msg.mediaUrl} referrerPolicy="no-referrer" className="w-full h-full object-cover" alt="" />
                                   </div>
                                 )}
                                 {msg.mediaType === 'video' && msg.mediaUrl && (
-                                  <div className="mb-2 rounded-2xl overflow-hidden max-w-xs border border-white/10">
-                                    <video src={msg.mediaUrl} controls playsInline className="w-full max-h-60 rounded-xl" />
+                                  <div className="mb-1.5 rounded-lg overflow-hidden max-w-xs">
+                                    <video src={msg.mediaUrl} controls playsInline className="w-full max-h-60 rounded-lg" />
                                   </div>
                                 )}
                                 {msg.mediaType === 'voice' && msg.mediaUrl && (
-                                  <div className="mb-2 flex items-center gap-2 min-w-[200px] py-1">
+                                  <div className="mb-1.5 flex items-center gap-2 min-w-[200px] py-1">
                                     <audio src={msg.mediaUrl} controls className="w-full max-h-12 scale-90 origin-left" />
                                     <span className="text-[10px] font-mono font-bold whitespace-nowrap opacity-70">
                                       🎙️ {msg.voiceDuration || '0:00'}
@@ -1305,19 +1349,22 @@ export default function ChatMemoriesSection({
                                   </div>
                                 )}
                                 {msg.text && (
-                                  <p className="text-sm leading-relaxed whitespace-pre-wrap" dir="auto">
+                                  <p className="text-[14.5px] leading-relaxed whitespace-pre-wrap" dir="auto">
                                     {msg.text}
                                   </p>
                                 )}
                                 <p
-                                  className={`text-[9px] font-mono mt-1.5 text-right rtl:text-left ${
-                                    isMe ? 'text-white/70' : 'text-neutral-400'
+                                  className={`text-[10px] font-normal mt-1 flex items-center justify-end gap-1 rtl:justify-start ${
+                                    isMe ? 'text-white/65' : 'text-neutral-400'
                                   }`}
                                 >
-                                  {new Date(msg.timestamp).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
+                                  <span>
+                                    {new Date(msg.timestamp).toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                  {isMe && <span className="text-[#53bdeb] text-[12px] leading-none">✓✓</span>}
                                 </p>
                               </div>
                               {isMe && (
@@ -1343,16 +1390,16 @@ export default function ChatMemoriesSection({
           )}
 
           {/* Composer: add a new (historical) message to this saved conversation */}
-          <div className="p-3 border-t border-white/20 dark:border-neutral-900 bg-white/40 dark:bg-black/20 backdrop-blur-md shrink-0 space-y-2">
+          <div className="p-2.5 shrink-0 space-y-2" style={{ backgroundColor: '#0b141a' }}>
             {composerOpen && (
-              <div className="flex gap-2 items-center">
-                <div className="flex rounded-full overflow-hidden border border-neutral-300/40 text-[10px] font-bold shrink-0">
+              <div className="flex gap-2 items-center px-0.5">
+                <div className="flex rounded-full overflow-hidden border border-white/10 text-[10px] font-bold shrink-0">
                   {(['Dodo', 'SO'] as const).map((role) => (
                     <button
                       key={role}
                       onClick={() => setComposerDraft((p) => ({ ...p, sender: role }))}
                       className={`px-2.5 py-1.5 transition-all cursor-pointer ${
-                        composerDraft.sender === role ? 'bg-rose-gold-500 text-white' : 'bg-white/50 dark:bg-black/20 text-neutral-500'
+                        composerDraft.sender === role ? 'bg-[#00a884] text-white' : 'bg-[#202c33] text-neutral-400'
                       }`}
                     >
                       {nameOf(role)}
@@ -1363,15 +1410,15 @@ export default function ChatMemoriesSection({
                   type="date"
                   value={composerDraft.dateStr}
                   onChange={(e) => setComposerDraft((p) => ({ ...p, dateStr: e.target.value }))}
-                  className="text-[10px] py-1.5 px-2 rounded-xl bg-white/50 dark:bg-black/20 border border-neutral-300/30 shrink-0"
+                  className="text-[10px] py-1.5 px-2 rounded-xl bg-[#202c33] border border-white/10 text-neutral-300 shrink-0"
                 />
                 <input
                   type="time"
                   value={composerDraft.timeStr}
                   onChange={(e) => setComposerDraft((p) => ({ ...p, timeStr: e.target.value }))}
-                  className="text-[10px] py-1.5 px-2 rounded-xl bg-white/50 dark:bg-black/20 border border-neutral-300/30 shrink-0"
+                  className="text-[10px] py-1.5 px-2 rounded-xl bg-[#202c33] border border-white/10 text-neutral-300 shrink-0"
                 />
-                <label className="p-1.5 rounded-full bg-white/50 dark:bg-black/20 border border-neutral-300/30 text-neutral-400 cursor-pointer hover:text-rose-gold-500 shrink-0">
+                <label className="p-1.5 rounded-full bg-[#202c33] border border-white/10 text-neutral-400 cursor-pointer hover:text-[#00a884] shrink-0">
                   <ImageIcon size={13} />
                   <input
                     type="file"
@@ -1393,7 +1440,7 @@ export default function ChatMemoriesSection({
                 <button
                   onClick={() => setComposerDraft((p) => ({ ...p, isImportant: !p.isImportant }))}
                   className={`p-1.5 rounded-full shrink-0 cursor-pointer ${
-                    composerDraft.isImportant ? 'text-amber-500' : 'text-neutral-300 hover:text-amber-400'
+                    composerDraft.isImportant ? 'text-amber-400' : 'text-neutral-500 hover:text-amber-400'
                   }`}
                 >
                   <Star size={14} className={composerDraft.isImportant ? 'fill-amber-400' : ''} />
@@ -1403,27 +1450,30 @@ export default function ChatMemoriesSection({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setComposerOpen((v) => !v)}
-                className="p-2.5 rounded-full bg-white/60 dark:bg-black/30 text-neutral-400 hover:text-rose-gold-500 transition-all cursor-pointer shrink-0"
+                className="p-2 rounded-full text-neutral-400 hover:text-white transition-all cursor-pointer shrink-0"
                 title={t('خيارات إضافية', 'More options')}
               >
-                <Plus size={16} className={composerOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />
+                <Plus size={22} className={composerOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />
               </button>
-              <input
-                type="text"
-                value={composerDraft.text}
-                dir="auto"
-                onChange={(e) => setComposerDraft((p) => ({ ...p, text: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submitComposer();
-                }}
-                placeholder={t('أضف رسالة لهذه المحادثة...', 'Add a message to this conversation...')}
-                className="flex-1 text-sm py-2.5 px-4 rounded-full bg-white/60 dark:bg-black/30 border border-neutral-300/40 focus:outline-none focus:border-rose-gold-400"
-              />
+              <div className="flex-1 flex items-center gap-2 rounded-full px-4 py-2" style={{ backgroundColor: '#2a3942' }}>
+                <input
+                  type="text"
+                  value={composerDraft.text}
+                  dir="auto"
+                  onChange={(e) => setComposerDraft((p) => ({ ...p, text: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') submitComposer();
+                  }}
+                  placeholder={t('اكتب رسالة...', 'Type a message...')}
+                  className="flex-1 bg-transparent text-[14.5px] text-white placeholder:text-neutral-500 focus:outline-none"
+                />
+              </div>
               <button
                 onClick={submitComposer}
-                className="p-2.5 rounded-full bg-rose-gold-500 hover:bg-rose-gold-600 text-white transition-all cursor-pointer shrink-0"
+                className="p-2.5 rounded-full text-white transition-all cursor-pointer shrink-0"
+                style={{ backgroundColor: '#00a884' }}
               >
-                <Save size={15} />
+                <Save size={16} />
               </button>
             </div>
           </div>
@@ -1527,8 +1577,8 @@ function MsgActionButtons({
     <>
       <button
         onClick={onStar}
-        className={`p-1.5 rounded-full hover:bg-amber-100 dark:hover:bg-amber-950/30 transition-all cursor-pointer ${
-          msg.isImportant ? 'text-amber-500' : 'text-neutral-400 hover:text-amber-500'
+        className={`p-1.5 rounded-full hover:bg-white/10 transition-all cursor-pointer ${
+          msg.isImportant ? 'text-amber-400' : 'text-neutral-500 hover:text-amber-400'
         }`}
         title={msg.isImportant ? 'إلغاء التمييز' : 'تمييز كمهمة'}
       >
@@ -1536,14 +1586,14 @@ function MsgActionButtons({
       </button>
       <button
         onClick={onEdit}
-        className="p-1.5 rounded-full hover:bg-neutral-200/60 dark:hover:bg-neutral-800/60 text-neutral-400 hover:text-rose-gold-500 transition-all cursor-pointer"
+        className="p-1.5 rounded-full hover:bg-white/10 text-neutral-500 hover:text-white transition-all cursor-pointer"
         title="تعديل"
       >
         <Edit2 size={13} />
       </button>
       <button
         onClick={onDelete}
-        className="p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-950/40 text-neutral-400 hover:text-red-500 transition-all cursor-pointer"
+        className="p-1.5 rounded-full hover:bg-white/10 text-neutral-500 hover:text-red-400 transition-all cursor-pointer"
         title="حذف"
       >
         <Trash2 size={13} />
