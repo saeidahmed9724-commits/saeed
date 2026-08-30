@@ -14,6 +14,7 @@ import PlayerCardSection from './components/PlayerCardSection';
 import NightSky from './components/NightSky';
 import DateGenerator from './components/DateGenerator';
 import DailyQuestionSection from './components/DailyQuestionSection';
+import DailyMoodSection from './components/DailyMoodSection';
 import MemoryReel from './components/MemoryReel';
 import SurpriseMe from './components/SurpriseMe';
 import BirthdayConfetti from './components/BirthdayConfetti';
@@ -102,7 +103,7 @@ export default function App() {
   const [isAutoTheme, setIsAutoTheme] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile' | 'chat'>('home');
   const [isLanding, setIsLanding] = useState(true);
-  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'playerCard' | null>(null);
+  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'playerCard' | 'mood' | null>(null);
   const [anniversaryText, setAnniversaryText] = useState('');
   const [countdownUnits, setCountdownUnits] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => (localStorage.getItem('user_role') as UserRole) || 'Dodo');
@@ -1472,6 +1473,22 @@ export default function App() {
                       </div>
                     </button>
 
+                    {/* Daily Mood */}
+                    <button
+                      onClick={() => setActiveWidgetModal('mood')}
+                      className="rounded-2xl glass p-3 border border-white/30 dark:border-white/5 shadow-xs hover:scale-[1.02] active:scale-98 transition-all flex flex-col justify-between items-start text-left rtl:text-right cursor-pointer group h-full min-h-[90px]"
+                    >
+                      <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform">😊</span>
+                      <div>
+                        <h4 className="font-serif text-xs font-bold text-neutral-950 dark:text-neutral-100">
+                          {lang === 'ar' ? 'مزاج اليوم' : 'Daily Mood'}
+                        </h4>
+                        <p className="text-[9px] text-neutral-400 dark:text-neutral-500 font-medium mt-0.5">
+                          {lang === 'ar' ? 'سجّل مزاجك اليومي' : 'Log your daily mood'}
+                        </p>
+                      </div>
+                    </button>
+
                     {/* 7. Achievements */}
                     <button
                       onClick={() => setActiveWidgetModal('achievements')}
@@ -2140,6 +2157,11 @@ export default function App() {
             {activeWidgetModal === 'question' && (
               <WidgetModal onClose={() => setActiveWidgetModal(null)} title={t.dailyQuestion || 'Daily Question'}>
                 <DailyQuestionSection lang={lang} currentUserRole={currentUserRole} initialQuestionId={selectedQuestionId} />
+              </WidgetModal>
+            )}
+            {activeWidgetModal === 'mood' && (
+              <WidgetModal onClose={() => setActiveWidgetModal(null)} title={lang === 'ar' ? 'مزاج اليوم 😊' : 'Daily Mood 😊'}>
+                <DailyMoodSection lang={lang} currentUserRole={currentUserRole} />
               </WidgetModal>
             )}
             {activeWidgetModal === 'achievements' && (
