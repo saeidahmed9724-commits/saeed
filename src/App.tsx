@@ -113,22 +113,6 @@ export default function App() {
   const [selectedGalleryItemForMemory, setSelectedGalleryItemForMemory] = useState<GalleryItem | null>(null);
   const [editingGalleryItem, setEditingGalleryItem] = useState<GalleryItem | null>(null);
   const [brokenMemoryImageIds, setBrokenMemoryImageIds] = useState<Set<string>>(new Set());
-  // الذكريات المميزة ❤️ — محفوظة محليًا لحد ما نضيف الحقل ده في نوع Memory نفسه
-  const [favoriteMemoryIds, setFavoriteMemoryIds] = useState<Set<string>>(
-    () => new Set<string>(JSON.parse(localStorage.getItem('favorite_memory_ids') || '[]'))
-  );
-  const toggleFavoriteMemory = (id: string) => {
-    setFavoriteMemoryIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      localStorage.setItem('favorite_memory_ids', JSON.stringify(Array.from(next)));
-      return next;
-    });
-  };
 
   // Deep linking and highlighting states
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
@@ -1521,7 +1505,7 @@ export default function App() {
                 </div>
               )}
 
-            {/* --- MEMORIES TAB (Memory Journal Redesign) --- */}
+            {/* --- MEMORIES TAB --- */}
             {activeTab === 'memories' && (() => {
               const allMemories = DataStore.getMemories().filter(
                 (mem) => mem && mem.imageUrl && mem.imageUrl.trim() !== '' && !brokenMemoryImageIds.has(mem.id)
@@ -1558,273 +1542,172 @@ export default function App() {
                 return dateStr;
               };
 
-              const deleteMemory = (mem: Memory) => {
-                if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذه الذكرى؟' : 'Are you sure you want to delete this memory?')) {
-                  const updated = DataStore.getMemories().filter(m => m.id !== mem.id);
-                  DataStore.saveMemories(updated, {
-                    type: 'buzz',
-                    titleAr: 'حذف ذكرى 🗑️',
-                    titleEn: 'Deleted Memory 🗑️',
-                    descAr: `تم حذف الذكرى "${mem.title}"`,
-                    descEn: `Deleted memory "${mem.title}"`
-                  });
-                  onDataChanged();
-                }
-              };
-
-              const shareMemory = async (mem: Memory) => {
-                try {
-                  await fetch('/api/chat/message', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      sender: currentUserRole,
-                      text:
-                        lang === 'ar'
-                          ? `شاركت معك ذكرى: "${mem.title}"`
-                          : `Shared a memory: "${mem.title}"`,
-                      sharedItem: {
-                        type: 'memory',
-                        id: mem.id,
-                        title: mem.title,
-                        subtitle: mem.date,
-                        image: mem.imageUrl
-                      }
-                    })
-                  });
-                  onDataChanged();
-                  setActiveTab('chat');
-                } catch (err) {
-                  console.error('Error sharing memory:', err);
-                }
-              };
-
-              const totalDays = sortedDates.length;
-              const totalMemories = allMemories.length;
-              const totalPhotos = allMemories.length;
-              const roleCycle = ['hero', 'tall', 'tall', 'wide'] as const;
-
               return (
-                <div className="relative -mx-4 sm:-mx-6 rounded-[32px] overflow-hidden">
-                  {/* خلفية صفحة الذكريات — أسود دافئ + Glow خفيف من العنابي والـPink */}
-                  <div className="absolute inset-0 -z-10 bg-[#080304]">
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          'radial-gradient(ellipse 60% 40% at 50% 10%, rgba(42,11,24,0.55) 0%, transparent 70%), radial-gradient(ellipse 50% 35% at 5% 90%, rgba(231,53,131,0.06) 0%, transparent 70%), radial-gradient(ellipse 50% 35% at 95% 55%, rgba(231,53,131,0.05) 0%, transparent 70%)'
-                      }}
-                    />
-                    <div className="absolute top-0 bottom-0 right-6 w-px bg-gradient-to-b from-transparent via-[#e73583]/35 to-transparent" />
+                <div className="space-y-10 py-2 animate-fade-in">
+                  <div className="text-center mb-8 relative">
+                    <h3 className="font-serif text-3xl font-bold text-neutral-950 dark:text-neutral-50 mb-2">
+                      {t.memories} 💖
+                    </h3>
+                    <p className="text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 mt-2 max-w-md mx-auto leading-relaxed">
+                      {lang === 'ar'
+                        ? 'سجل ذكرياتنا الرومانسية مقسمة بحسب كل يوم 📅'
+                        : 'Chronicle our romantic memories grouped day by day 📅'}
+                    </p>
+
+                    <div className="mt-5 flex justify-center gap-3 flex-wrap">
+                      <button
+                        onClick={() => setIsDirectUploadOpen(true)}
+                        className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-rose-gold-500 to-pink-500 hover:from-rose-gold-600 hover:to-pink-600 text-white font-bold text-xs flex items-center gap-2 shadow-md hover:scale-105 transition-all cursor-pointer"
+                      >
+                        <Plus size={16} />
+                        <span>{lang === 'ar' ? 'إضافة ذكريات وصور جديدة 📸' : 'Add New Memories & Photos 📸'}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedGalleryItemForMemory(null);
+                          setIsGalleryToMemoryOpen(true);
+                        }}
+                        className="px-5 py-2.5 rounded-2xl bg-white/80 dark:bg-neutral-800/80 hover:bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 font-bold text-xs flex items-center gap-2 border border-rose-gold-500/30 shadow-sm hover:scale-105 transition-all cursor-pointer"
+                      >
+                        <ImageIcon size={16} />
+                        <span>{lang === 'ar' ? 'اختيار صورة من المعرض 🖼️' : 'Pick Photo from Gallery 🖼️'}</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="relative px-5 sm:px-8 py-10 space-y-2 animate-fade-in text-[#f7f1f3]">
-                    {/* Header */}
-                    <div className="text-center mb-4">
-                      <h3 className="font-serif text-[32px] sm:text-[34px] font-extrabold tracking-tight mb-2">
-                        {lang === 'ar' ? 'الذكريات ✨' : 'Memories ✨'}
-                      </h3>
-                      <p className="text-[14px] sm:text-[15px] text-[#a99ba0] mb-3">
-                        {lang === 'ar' ? 'سجل لحظاتنا الحلوة، يوم بيوم.' : 'A record of our sweetest moments, day by day.'}
+                  {allMemories.length === 0 ? (
+                    <div className="rounded-[36px] border border-dashed border-rose-gold-100 dark:border-rose-gold-950/40 p-12 text-center bg-white/20 dark:bg-black/10 max-w-md mx-auto">
+                      <Sparkles className="text-rose-gold-300 mx-auto mb-3 animate-pulse" size={44} />
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400 px-6 font-medium leading-relaxed">
+                        {t.noContentAdded}
                       </p>
-                      <div className="inline-flex items-center gap-1.5 text-[13px] sm:text-[13.5px] text-[#a99ba0] flex-wrap justify-center">
-                        <span><b className="text-[#e73583] font-bold">{totalDays}</b> {lang === 'ar' ? 'يوم' : 'days'}</span>
-                        <span>•</span>
-                        <span><b className="text-[#e73583] font-bold">{totalMemories}</b> {lang === 'ar' ? 'ذكرى' : 'memories'}</span>
-                        <span>•</span>
-                        <span><b className="text-[#e73583] font-bold">{totalPhotos}</b> {lang === 'ar' ? 'صورة' : 'photos'}</span>
-                      </div>
-
-                      <div className="mt-6 flex justify-center gap-2.5 flex-wrap">
-                        <button
-                          onClick={() => setIsDirectUploadOpen(true)}
-                          className="h-[46px] px-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-[#e73583] to-[#f45a9a] text-white font-bold text-[14.5px] shadow-[0_6px_20px_rgba(231,53,131,0.25)] hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-                        >
-                          <Plus size={16} />
-                          <span>{lang === 'ar' ? '＋ إضافة ذكريات جديدة' : '＋ Add new memories'}</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedGalleryItemForMemory(null);
-                            setIsGalleryToMemoryOpen(true);
-                          }}
-                          className="h-[46px] px-5 inline-flex items-center gap-2 rounded-full bg-transparent border border-[#e73583]/35 text-[#e73583] font-bold text-[14.5px] hover:bg-[#e73583]/10 active:scale-95 transition-all cursor-pointer"
-                        >
-                          <ImageIcon size={16} />
-                          <span>{lang === 'ar' ? '▧ اختيار من المعرض' : '▧ Pick from gallery'}</span>
-                        </button>
-                      </div>
                     </div>
+                  ) : (
+                    <div className="space-y-12">
+                      {sortedDates.map((dateKey) => {
+                        const groupMemories = groupedByDate[dateKey];
+                        const formattedLabel = formatDateLabel(dateKey);
 
-                    {allMemories.length === 0 ? (
-                      <div className="rounded-[32px] border border-dashed border-[#e73583]/25 p-12 text-center bg-white/[0.02] max-w-md mx-auto mt-10">
-                        <Sparkles className="text-[#e73583]/60 mx-auto mb-3 animate-pulse" size={40} />
-                        <p className="text-xs text-[#a99ba0] px-6 font-medium leading-relaxed">
-                          {t.noContentAdded}
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        {sortedDates.map((dateKey, dayIdx) => {
-                          const groupMemories = groupedByDate[dateKey];
-                          const formattedLabel = formatDateLabel(dateKey);
-
-                          return (
-                            <div key={`group-${dateKey}`} className={dayIdx > 0 ? 'mt-14' : 'mt-10'}>
-                              {dayIdx > 0 && (
-                                <div className="text-center mb-10 text-[#a99ba0]">
-                                  <span className="block text-[#e73583] text-[15px] mb-1.5">✦</span>
-                                  <p className="text-[13px] mb-3">
-                                    {lang === 'ar' ? 'يوم جديد، ذكرى جديدة' : 'A new day, a new memory'}
-                                  </p>
-                                  <div className="flex items-center gap-2.5 max-w-xs mx-auto">
-                                    <span className="flex-1 h-px bg-gradient-to-l from-transparent via-[#2a0b18] to-transparent" />
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#e73583] shrink-0" />
-                                    <span className="flex-1 h-px bg-gradient-to-r from-transparent via-[#2a0b18] to-transparent" />
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Memory Chapter Header */}
-                              <div className="text-center mb-6">
-                                <div className="text-xl mb-1.5 opacity-85">📅</div>
-                                <h4 className="text-[21px] sm:text-[22px] font-extrabold mb-2">{formattedLabel}</h4>
-                                <span
-                                  className="inline-block text-[12px] font-bold text-[#e73583] bg-[#e73583]/10 border border-[#e73583]/25 rounded-full px-3 py-[3px] mb-2.5 font-mono"
-                                  dir="ltr"
-                                >
-                                  {dateKey}
-                                </span>
-                                <p className="text-[13px] text-[#a99ba0] mb-0.5">
-                                  {groupMemories.length} {lang === 'ar' ? 'ذكريات' : 'memories'}
-                                </p>
-                                <p className="text-[13px] text-[#a99ba0] mb-3.5">
-                                  {lang === 'ar' ? 'لحظات من يومنا ❤️' : 'Moments from our day ❤️'}
-                                </p>
-                                <div className="flex items-center gap-2.5 max-w-xs mx-auto">
-                                  <span className="flex-1 h-px bg-gradient-to-l from-transparent via-[#2a0b18] to-transparent" />
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#e73583] shrink-0" />
-                                  <span className="flex-1 h-px bg-gradient-to-r from-transparent via-[#2a0b18] to-transparent" />
-                                </div>
+                        return (
+                          <div key={`group-${dateKey}`} className="space-y-6">
+                            {/* Date Group Header */}
+                            <div className="flex items-center gap-3 pb-3 border-b border-rose-gold-200/60 dark:border-white/10">
+                              <div className="w-10 h-10 rounded-2xl bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 flex items-center justify-center font-bold text-lg shadow-xs">
+                                📅
                               </div>
-
-                              {/* Asymmetric Memory Grid */}
-                              <div className="grid grid-cols-2 md:grid-cols-3 [grid-auto-flow:dense] auto-rows-[150px] md:auto-rows-[170px] gap-3">
-                                {groupMemories.map((mem, idx) => {
-                                  const isFav = favoriteMemoryIds.has(mem.id);
-                                  const contentText = (mem.content || '').trim();
-                                  const isQuote = contentText.length > 90;
-                                  const hasCaption = !isQuote && (Boolean(mem.title) || Boolean(contentText));
-                                  const role = isQuote ? 'quote' : roleCycle[idx % roleCycle.length];
-                                  const spanClass =
-                                    role === 'quote' ? 'col-span-2 md:col-span-3' :
-                                    role === 'hero' ? 'col-span-2 row-span-2' :
-                                    role === 'wide' ? 'col-span-2 row-span-1' :
-                                    'col-span-1 row-span-1';
-
-                                  if (isQuote) {
-                                    return (
-                                      <div
-                                        key={`mem-${mem.id || idx}-${idx}`}
-                                        className={`${spanClass} rounded-[20px] bg-[#2a0b18] flex flex-col items-center justify-center text-center px-6 py-6 min-h-[150px]`}
-                                      >
-                                        <p className="text-[15px] leading-relaxed max-w-lg">"{contentText}"</p>
-                                        {mem.title && (
-                                          <span className="mt-3 text-[13px] font-bold text-[#f45a9a]">— {mem.title}</span>
-                                        )}
-                                      </div>
-                                    );
-                                  }
-
-                                  return (
-                                    <div
-                                      key={`mem-${mem.id || idx}-${idx}`}
-                                      className={`${spanClass} h-full relative flex flex-col rounded-[20px] overflow-hidden bg-[#120c0e] border transition-colors duration-300 ${
-                                        isFav ? 'border-[#e73583]/35' : 'border-white/[0.07]'
-                                      }`}
-                                    >
-                                      {mem.imageUrl && (
-                                        <div
-                                          className="relative flex-1 min-h-0 overflow-hidden cursor-pointer group"
-                                          onClick={() => toggleFavoriteMemory(mem.id)}
-                                        >
-                                          <img
-                                            src={mem.imageUrl}
-                                            referrerPolicy="no-referrer"
-                                            alt={mem.title}
-                                            onError={() => {
-                                              setBrokenMemoryImageIds(prev => new Set(prev).add(mem.id));
-                                            }}
-                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                                          />
-                                          {isFav && (
-                                            <span className="absolute top-2.5 left-2.5 w-2.5 h-2.5 rounded-full bg-[#e73583] shadow-[0_0_0_3px_rgba(231,53,131,0.2)]" />
-                                          )}
-                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                            <span className="text-white text-[13px] font-bold">
-                                              {isFav ? '❤️ ذكرى مميزة' : '♡ ذكرى مميزة'}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {hasCaption ? (
-                                        <div className="px-3.5 py-3 shrink-0">
-                                          {mem.title && (
-                                            <p className="font-serif text-[14.5px] font-semibold mb-1 leading-snug">
-                                              {mem.title}
-                                            </p>
-                                          )}
-                                          {contentText && (
-                                            <p
-                                              className="text-[12.5px] text-[#a99ba0] leading-relaxed mb-2.5"
-                                              style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-                                            >
-                                              {contentText}
-                                            </p>
-                                          )}
-                                          <div className="flex items-center justify-between">
-                                            <span className="text-[11px] text-[#a99ba0]" dir="ltr">{mem.date}</span>
-                                            <div className="flex items-center gap-1">
-                                              <button
-                                                onClick={() => shareMemory(mem)}
-                                                className="inline-flex items-center gap-1 bg-[#2a0b18] text-[#f45a9a] hover:bg-[#e73583] hover:text-white rounded-full px-3 py-1 text-[11px] font-bold transition-colors cursor-pointer"
-                                              >
-                                                <span>💬</span>
-                                                <span>{lang === 'ar' ? 'شارك في الشات' : 'Share'}</span>
-                                              </button>
-                                              <button
-                                                onClick={() => deleteMemory(mem)}
-                                                className="p-1.5 rounded-full text-[#a99ba0] hover:text-[#e73583] hover:bg-[#e73583]/10 transition-all cursor-pointer"
-                                                title={lang === 'ar' ? 'حذف' : 'Delete'}
-                                              >
-                                                <Trash2 size={13} />
-                                              </button>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="px-3 py-2 shrink-0 flex items-center justify-between">
-                                          <span className="text-[11px] text-[#a99ba0]" dir="ltr">{mem.date}</span>
-                                          <button
-                                            onClick={() => deleteMemory(mem)}
-                                            className="p-1.5 rounded-full text-[#a99ba0] hover:text-[#e73583] hover:bg-[#e73583]/10 transition-all cursor-pointer"
-                                            title={lang === 'ar' ? 'حذف' : 'Delete'}
-                                          >
-                                            <Trash2 size={13} />
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-serif text-lg sm:text-xl font-bold text-neutral-900 dark:text-neutral-100">
+                                    {formattedLabel}
+                                  </h4>
+                                  <span className="px-2.5 py-0.5 rounded-full bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 text-xs font-mono font-bold">
+                                    {dateKey}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-medium mt-0.5">
+                                  {lang === 'ar'
+                                    ? `${groupMemories.length} ذكريات ومواقف مصورة`
+                                    : `${groupMemories.length} memory photos`}
+                                </p>
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+
+                            {/* Memories Grid for this date */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              {groupMemories.map((mem, idx) => (
+                                <div
+                                  key={`mem-${mem.id || idx}-${idx}`}
+                                  className="rounded-[28px] glass p-6 border border-white/50 dark:border-white/10 shadow-lg flex flex-col justify-between hover:scale-[1.01] transition-all duration-300"
+                                >
+                                  {mem.imageUrl && (
+                                    <div className="rounded-2xl overflow-hidden bg-neutral-100/50 dark:bg-neutral-800/50 mb-6 flex items-center justify-center max-h-[420px] shadow-sm">
+                                      <img
+                                        src={mem.imageUrl}
+                                        referrerPolicy="no-referrer"
+                                        alt={mem.title}
+                                        onError={() => {
+                                          setBrokenMemoryImageIds(prev => new Set(prev).add(mem.id));
+                                        }}
+                                        className="w-full h-auto max-h-[420px] object-contain rounded-2xl"
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex flex-col gap-3">
+                                    <h4 className="font-serif text-lg font-bold text-neutral-900 dark:text-neutral-100 leading-snug">
+                                      {mem.title}
+                                    </h4>
+                                    <div>
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-gold-500/10 text-rose-gold-600 dark:text-rose-gold-400 text-[11px] font-mono font-bold border border-rose-gold-500/20">
+                                        📅 {mem.date}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed pt-1">
+                                      {mem.content}
+                                    </p>
+
+                                    <div className="pt-4 mt-2 border-t border-rose-gold-100/20 flex items-center justify-between">
+                                      <button
+                                        onClick={() => {
+                                          if (confirm(lang === 'ar' ? 'هل أنت متأكد من حذف هذه الذكرى؟' : 'Are you sure you want to delete this memory?')) {
+                                            const updated = DataStore.getMemories().filter(m => m.id !== mem.id);
+                                            DataStore.saveMemories(updated, {
+                                              type: 'buzz',
+                                              titleAr: 'حذف ذكرى 🗑️',
+                                              titleEn: 'Deleted Memory 🗑️',
+                                              descAr: `تم حذف الذكرى "${mem.title}"`,
+                                              descEn: `Deleted memory "${mem.title}"`
+                                            });
+                                            onDataChanged();
+                                          }
+                                        }}
+                                        className="p-2 rounded-full text-neutral-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                                        title={lang === 'ar' ? 'حذف هذه الذكرى' : 'Delete memory'}
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            await fetch('/api/chat/message', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                sender: currentUserRole,
+                                                text:
+                                                  lang === 'ar'
+                                                    ? `شاركت معك ذكرى: "${mem.title}"`
+                                                    : `Shared a memory: "${mem.title}"`,
+                                                sharedItem: {
+                                                  type: 'memory',
+                                                  id: mem.id,
+                                                  title: mem.title,
+                                                  subtitle: mem.date,
+                                                  image: mem.imageUrl
+                                                }
+                                              })
+                                            });
+                                            onDataChanged();
+                                            setActiveTab('chat');
+                                          } catch (err) {
+                                            console.error('Error sharing memory:', err);
+                                          }
+                                        }}
+                                        className="text-xs font-bold text-rose-gold-600 dark:text-rose-gold-400 hover:text-rose-gold-700 bg-rose-gold-500/10 hover:bg-rose-gold-500/20 px-4 py-2 rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                      >
+                                        <span>💬</span>
+                                        <span>{lang === 'ar' ? 'مشاركة في المحادثة' : 'Share in Chat'}</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })()}
