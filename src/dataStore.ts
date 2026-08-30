@@ -1,4 +1,4 @@
-import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole, ChatMemoryConversation, ChatMemoryMessage } from './types.js';
+import { Profile, Memory, GalleryItem, VideoItem, Song, Quote, Envelope, DailyQuestion, QuizQuestion, VoiceMessage, DateActivity, KnowledgeBaseData, KnowledgeBaseMap, KnowledgeQuizScoresMap, UserRole, ChatMemoryConversation, ChatMemoryMessage, PlayerCardMap, PlayerCardData } from './types.js';
 import { getDefaultDailyQuestions } from './defaultQuestions.js';
 
 // Default Knowledge Base ("اعرفني أكتر ❤️")
@@ -1116,6 +1116,7 @@ export class DataStore {
     syncItem('voice_messages', serverState.voiceMessages);
     syncItem('date_activities', serverState.dateActivities);
     syncItem('chat_memories', serverState.chatMemories);
+    syncItem('player_card', serverState.playerCard);
 
     if (updatedAny && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('datastore_synced'));
@@ -1222,6 +1223,37 @@ export class DataStore {
       titleEn: `New Knowledge Quiz Result 🧩`,
       descAr: `أكمل ${role === 'Dodo' ? 'سعيد' : 'سهيلة'} اختبار المعرفة وحقق نسبة ${pct}%!`,
       descEn: `${role} completed a knowledge quiz with ${pct}%!`
+    });
+  }
+
+  // --- PLAYER CARD ("كارت الشريك") ---
+
+  static getPlayerCard(): PlayerCardMap {
+    return loadFromStorage<PlayerCardMap>('player_card', {});
+  }
+
+  static savePlayerCardRating(role: UserRole, data: PlayerCardData, activity?: any): void {
+    const current = this.getPlayerCard();
+    // The card being saved always describes the PARTNER, rated BY `role`.
+    const key = role === 'Dodo' ? 'ratingsOfSO' : 'ratingsOfDodo';
+    const raterName = role === 'Dodo' ? 'سعيد' : 'سهيلة';
+    const partnerName = role === 'Dodo' ? 'سهيلة' : 'سعيد';
+
+    const updated: PlayerCardMap = {
+      ...current,
+      [key]: {
+        ...data,
+        updatedAt: Date.now()
+      }
+    };
+
+    saveToStorage('player_card', updated);
+    this.postSharedUpdate('playerCard', updated, activity || {
+      type: 'buzz',
+      titleAr: `كارت لاعب جديد 🃏`,
+      titleEn: `New Player Card 🃏`,
+      descAr: `قام ${raterName} بتحديث كارت ${partnerName}.`,
+      descEn: `${role} updated ${partnerName}'s player card.`
     });
   }
 
