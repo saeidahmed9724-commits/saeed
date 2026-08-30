@@ -102,7 +102,7 @@ export default function App() {
   const [isAutoTheme, setIsAutoTheme] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile' | 'chat'>('home');
   const [isLanding, setIsLanding] = useState(true);
-  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | null>(null);
+  const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'playerCard' | null>(null);
   const [anniversaryText, setAnniversaryText] = useState('');
   const [countdownUnits, setCountdownUnits] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>(() => (localStorage.getItem('user_role') as UserRole) || 'Dodo');
