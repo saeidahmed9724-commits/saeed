@@ -330,6 +330,23 @@ app.get('/api/interaction-state', async (req, res) => {
 // poll's payload — and therefore Fast Origin Transfer usage — small.
 app.get('/api/interaction-state/live', async (req, res) => {
   const activeState: any = await readState();
+
+  // `since` = the timestamp (ms) of the newest chat message / game match the
+  // client already has locally. Only items newer than that are sent back.
+  // This is what actually keeps this endpoint's payload small on repeated
+  // polls — sending the full history back every time is what caused the
+  // Fast Origin Transfer spike, regardless of which other fields were
+  // trimmed out.
+  const since = Number(req.query.since) || 0;
+
+  const chatMessages = since > 0
+    ? (activeState.chatMessages || []).filter((m: any) => m.timestamp > since)
+    : activeState.chatMessages;
+
+  const gameMatches = since > 0
+    ? (activeState.gameMatches || []).filter((m: any) => m.updatedAt ? m.updatedAt > since : true)
+    : activeState.gameMatches;
+
   res.json({
     dodoMood: activeState.dodoMood,
     soMood: activeState.soMood,
@@ -340,12 +357,13 @@ app.get('/api/interaction-state/live', async (req, res) => {
     pendingBuzzes: activeState.pendingBuzzes,
     stickyNotes: activeState.stickyNotes,
     activityFeed: activeState.activityFeed,
-    chatMessages: activeState.chatMessages,
+    chatMessages,
     loveQuizAnswers: activeState.loveQuizAnswers,
     dailyMoodEntries: activeState.dailyMoodEntries,
-    gameMatches: activeState.gameMatches,
+    gameMatches,
     activeGameSession: activeState.activeGameSession,
-    playerCardRatings: activeState.playerCardRatings
+    playerCardRatings: activeState.playerCardRatings,
+    serverTime: Date.now() // client stores this as the next `since` value
   });
 });
 
@@ -373,7 +391,7 @@ app.post('/api/shared/update', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Direct Media & Memory Upload Endpoint (stores files in Supabase Storage)
@@ -523,7 +541,7 @@ app.post('/api/upload', async (req, res) => {
     );
 
     await writeState(activeState);
-    return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
+    return res.json({ success: true, items: createdItems, item: createdItems[0] });
   } catch (err: any) {
     console.error('Error during file upload:', err);
     return res.status(500).json({ error: 'Failed to save uploaded file(s)' });
@@ -680,7 +698,7 @@ app.post('/api/upload/complete', async (req, res) => {
     pushActivity(activeState, role || 'Dodo', 'buzz', actTitleAr, actTitleEn, actDescAr, actDescEn);
 
     await writeState(activeState);
-    return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
+    return res.json({ success: true, items: createdItems, item: createdItems[0] });
   } catch (err: any) {
     console.error('Error completing upload:', err);
     return res.status(500).json({ error: 'Failed to save uploaded file metadata' });
@@ -701,7 +719,7 @@ app.post('/api/interaction-state/presence', async (req, res) => {
     activeState.soLastActive = nowStr;
   }
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Update current partner mood
@@ -734,7 +752,7 @@ app.post('/api/interaction-state/mood', async (req, res) => {
   );
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Send a love heartbeat buzz
@@ -779,7 +797,7 @@ app.post('/api/interaction-state/buzz', async (req, res) => {
   );
 
   await writeState(activeState);
-  res.json({ success: true, newBuzz, state: activeState });
+  res.json({ success: true, newBuzz });
 });
 
 // Acknowledge a buzz so it is cleared on receiver's end
@@ -792,7 +810,7 @@ app.post('/api/interaction-state/buzz/ack', async (req, res) => {
   const activeState = await readState();
   activeState.pendingBuzzes = activeState.pendingBuzzes.filter(b => b.id !== id);
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Add a sticky love note
@@ -831,7 +849,7 @@ app.post('/api/interaction-state/note', async (req, res) => {
   );
 
   await writeState(activeState);
-  res.json({ success: true, newNote, state: activeState });
+  res.json({ success: true, newNote });
 });
 
 // Delete a sticky love note
@@ -840,7 +858,7 @@ app.delete('/api/interaction-state/note/:id', async (req, res) => {
   const activeState = await readState();
   activeState.stickyNotes = activeState.stickyNotes.filter(n => n.id !== id);
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Submit a quiz or question answer
@@ -893,7 +911,7 @@ app.post('/api/interaction-state/quiz-answer', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Submit / update today's (or any date's) mood check-in
@@ -960,7 +978,7 @@ app.post('/api/interaction-state/daily-mood', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, dayEntry: activeState.dailyMoodEntries[date], state: activeState });
+  res.json({ success: true, dayEntry: activeState.dailyMoodEntries[date] });
 });
 
 // --- OUR ARCADE (Games section) ---
@@ -1090,7 +1108,7 @@ app.post('/api/games/session/update', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, session, match, state: activeState });
+  res.json({ success: true, session, match });
 });
 
 // Either partner can clear a stuck/abandoned session
@@ -1115,7 +1133,12 @@ app.post('/api/interaction-state/activity', async (req, res) => {
   const activeState = await readState();
   pushActivity(activeState, sender, type, titleAr, titleEn, descAr, descEn);
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  // Was `res.json({ success: true })` — that echoed the
+  // *entire* app state (chat history, gallery, memories, videos, songs...)
+  // back to the client on every single typing/recording keystroke event.
+  // The client already knows what it just sent; it doesn't need the whole
+  // state back to confirm it landed.
+  res.json({ success: true });
 });
 
 // --- PRIVATE CHAT SYSTEM ENDPOINTS ---
@@ -1179,7 +1202,7 @@ app.post('/api/chat/message', async (req, res) => {
 
   pushActivity(activeState, sender, 'chat', titleAr, titleEn, descAr, descEn);
   await writeState(activeState);
-  res.json({ success: true, newMessage, state: activeState });
+  res.json({ success: true, newMessage });
 });
 
 // Edit a chat message
@@ -1196,7 +1219,7 @@ app.put('/api/chat/message/:id', async (req, res) => {
     msg.text = text;
     msg.isEdited = true;
     await writeState(activeState);
-    return res.json({ success: true, message: msg, state: activeState });
+    return res.json({ success: true, message: msg });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1209,7 +1232,7 @@ app.delete('/api/chat/message/:id', async (req, res) => {
   activeState.chatMessages = activeState.chatMessages.filter(m => m.id !== id);
   if (activeState.chatMessages.length !== initialLength) {
     await writeState(activeState);
-    return res.json({ success: true, state: activeState });
+    return res.json({ success: true });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1232,7 +1255,7 @@ app.post('/api/chat/message/:id/react', async (req, res) => {
       msg.reactions[role] = emoji;
     }
     await writeState(activeState);
-    return res.json({ success: true, message: msg, state: activeState });
+    return res.json({ success: true, message: msg });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1252,7 +1275,7 @@ app.post('/api/chat/message/:id/pin', async (req, res) => {
     }
     msg.isPinned = isPinned;
     await writeState(activeState);
-    return res.json({ success: true, message: msg, state: activeState });
+    return res.json({ success: true, message: msg });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1278,7 +1301,7 @@ app.post('/api/chat/status', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 export default app;
