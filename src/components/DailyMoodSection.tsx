@@ -23,6 +23,7 @@ type DailyMoodEntries = { [date: string]: DailyMoodDay };
 interface DailyMoodSectionProps {
   lang: Language;
   currentUserRole: UserRole;
+  liveState: any;
 }
 
 type ViewMode = 'today' | 'calendar' | 'stats';
@@ -43,7 +44,7 @@ function daysAgoKey(n: number): string {
   return toDateKey(d);
 }
 
-export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSectionProps) {
+export default function DailyMoodSection({ lang, currentUserRole, liveState }: DailyMoodSectionProps) {
   const isAr = lang === 'ar';
   const myKey: UserRole = currentUserRole;
   const partnerKey: UserRole = currentUserRole === 'Dodo' ? 'SO' : 'Dodo';
@@ -52,7 +53,6 @@ export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSec
 
   const [view, setView] = useState<ViewMode>('today');
   const [entries, setEntries] = useState<DailyMoodEntries>({});
-  const [loading, setLoading] = useState(true);
 
   // --- today form state ---
   const [selectedMoodId, setSelectedMoodId] = useState<string | null>(null);
@@ -65,25 +65,12 @@ export default function DailyMoodSection({ lang, currentUserRole }: DailyMoodSec
   const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  const fetchState = async () => {
-    try {
-      const res = await fetch('/api/interaction-state');
-      if (res.ok) {
-        const data = await res.json();
-        setEntries(data.dailyMoodEntries || {});
-      }
-    } catch (err) {
-      console.log('Error fetching daily mood state:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Read from the single app-wide poll (App.tsx) instead of running our own
+  // interval — avoids piling extra requests onto Vercel's function traffic.
+  const loading = !liveState;
   useEffect(() => {
-    fetchState();
-    const interval = setInterval(fetchState, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    if (liveState) setEntries(liveState.dailyMoodEntries || {});
+  }, [liveState]);
 
   const todaysDay = entries[todayKey()] || {};
   const myTodayEntry = todaysDay[myKey];

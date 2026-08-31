@@ -13,39 +13,27 @@ import GameHistory from './games/GameHistory';
 interface GamesSectionProps {
   lang: Language;
   currentUserRole: UserRole;
+  liveState: any;
 }
 
 type View = 'arcade' | GameType | 'stats' | 'history';
 
-export default function GamesSection({ lang, currentUserRole }: GamesSectionProps) {
+export default function GamesSection({ lang, currentUserRole, liveState }: GamesSectionProps) {
   const isAr = lang === 'ar';
   const [view, setView] = useState<View>('arcade');
   const [matches, setMatches] = useState<GameMatch[]>([]);
   const [session, setSession] = useState<GameSession | null>(null);
-  const [loading, setLoading] = useState(true);
   const sessionIdRef = useRef<string | null>(null);
 
-  const fetchState = async () => {
-    try {
-      const res = await fetch('/api/interaction-state');
-      if (res.ok) {
-        const data = await res.json();
-        setMatches(data.gameMatches || []);
-        setSession(data.activeGameSession || null);
-        sessionIdRef.current = data.activeGameSession?.id || null;
-      }
-    } catch (err) {
-      console.log('Error fetching arcade state:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Read from the single app-wide poll (App.tsx) instead of running our own
+  // interval — avoids piling extra requests onto Vercel's function traffic.
+  const loading = !liveState;
   useEffect(() => {
-    fetchState();
-    const interval = setInterval(fetchState, 2000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!liveState) return;
+    setMatches(liveState.gameMatches || []);
+    setSession(liveState.activeGameSession || null);
+    sessionIdRef.current = liveState.activeGameSession?.id || null;
+  }, [liveState]);
 
   const startSession = async (gameType: GameType, board: any, turn: UserRole, extra?: any) => {
     try {

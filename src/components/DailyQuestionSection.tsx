@@ -8,9 +8,10 @@ interface DailyQuestionProps {
   lang: Language;
   currentUserRole: UserRole;
   initialQuestionId?: string | null;
+  liveState: any;
 }
 
-export default function DailyQuestionSection({ lang, currentUserRole, initialQuestionId }: DailyQuestionProps) {
+export default function DailyQuestionSection({ lang, currentUserRole, initialQuestionId, liveState }: DailyQuestionProps) {
   const t = translations[lang];
   
   // States
@@ -73,29 +74,16 @@ export default function DailyQuestionSection({ lang, currentUserRole, initialQue
     return () => window.removeEventListener('datastore_synced', loadQuestions);
   }, [initialQuestionId]);
 
-  // Poll for real-time live answers to connect partner's devices instantly
+  // Read from the single app-wide poll (App.tsx) instead of running our own
+  // interval — avoids piling extra requests onto Vercel's function traffic.
   useEffect(() => {
-    const fetchAnswers = async () => {
-      if (!currentQuestion) return;
-      try {
-        const res = await fetch('/api/interaction-state');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.loveQuizAnswers && data.loveQuizAnswers[currentQuestion.id]) {
-            setServerAnswers(data.loveQuizAnswers[currentQuestion.id]);
-          } else {
-            setServerAnswers(null);
-          }
-        }
-      } catch (err) {
-        console.log('Error fetching daily question state:', err);
-      }
-    };
-
-    fetchAnswers();
-    const interval = setInterval(fetchAnswers, 3000);
-    return () => clearInterval(interval);
-  }, [currentQuestion]);
+    if (!currentQuestion || !liveState) return;
+    if (liveState.loveQuizAnswers && liveState.loveQuizAnswers[currentQuestion.id]) {
+      setServerAnswers(liveState.loveQuizAnswers[currentQuestion.id]);
+    } else {
+      setServerAnswers(null);
+    }
+  }, [currentQuestion, liveState]);
 
   const handleRandomQuestion = (allQs: DailyQuestion[] = questions) => {
     if (allQs.length === 0) return;
