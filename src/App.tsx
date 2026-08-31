@@ -329,8 +329,9 @@ export default function App() {
   // Periodically ping user's presence (active status) to the server
   useEffect(() => {
     if (!currentUserRole) return;
-    
+
     const pingPresence = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return; // skip while backgrounded
       try {
         await fetch('/api/interaction-state/presence', {
           method: 'POST',
@@ -343,8 +344,13 @@ export default function App() {
     };
 
     pingPresence(); // Ping immediately on load
-    const interval = setInterval(pingPresence, 15000); // Ping every 15 seconds
-    return () => clearInterval(interval);
+    const interval = setInterval(pingPresence, 20000); // Ping every 20 seconds
+    const onVisible = () => { if (!document.hidden) pingPresence(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [currentUserRole]);
 
   const lastLoggedTabRef = useRef<{ [key: string]: number }>({});
@@ -617,32 +623,21 @@ export default function App() {
     }
   };
 
-  // Poll server state for live notification feed
-  const liveStateEtagRef = useRef<string | null>(null);
+  // Poll server state for live notification feed.
+  // Uses the lightweight endpoint (chat, presence, activity, live game
+  // session, mood, quiz answers, player card) — the heavy/rarely-changing
+  // collections (gallery, memories, profiles, knowledge base, etc.) are
+  // synced separately on a much slower cadence below. Both pause entirely
+  // while the tab/app is in the background to avoid burning Vercel's
+  // Fast Origin Transfer allowance for a screen nobody is looking at.
   useEffect(() => {
     const fetchLiveState = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
-        // Send back the ETag from the last successful poll. If nothing has
-        // changed server-side, the API responds with a tiny 304 (no body)
-        // instead of re-sending the entire shared state — this is what
-        // keeps repeated polling cheap on Fast Origin Transfer.
-        const res = await fetch('/api/interaction-state', {
-          headers: liveStateEtagRef.current
-            ? { 'If-None-Match': liveStateEtagRef.current }
-            : undefined
-        });
-
-        if (res.status === 304) {
-          // Nothing changed since the last poll — nothing to update.
-          return;
-        }
-
+        const res = await fetch('/api/interaction-state/live');
         if (res.ok) {
-          const etag = res.headers.get('ETag');
-          if (etag) liveStateEtagRef.current = etag;
           const data = await res.json();
           setLiveState(data);
-          DataStore.syncFromRemote(data);
           
           if (data.activityFeed && data.activityFeed.length > 0) {
             const newest = data.activityFeed[0];
@@ -695,8 +690,42 @@ export default function App() {
 
     fetchLiveState();
     const interval = setInterval(fetchLiveState, 6000);
-    return () => clearInterval(interval);
+    const onVisible = () => { if (!document.hidden) fetchLiveState(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [currentUserRole, lastNotificationId, activeTab]);
+
+  // Slow full-state sync — only for the heavy, rarely-changing collections
+  // (profiles, gallery, memories, videos, songs, quotes, envelopes, daily
+  // question/quiz catalogs, voice messages, date activities). These don't
+  // need second-by-second freshness, so this runs far less often than the
+  // live poll above and also pauses while the tab is hidden.
+  useEffect(() => {
+    const fetchFullState = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const res = await fetch('/api/interaction-state');
+        if (res.ok) {
+          const data = await res.json();
+          DataStore.syncFromRemote(data);
+        }
+      } catch (err) {
+        console.log('Error fetching full state for background sync:', err);
+      }
+    };
+
+    fetchFullState();
+    const interval = setInterval(fetchFullState, 60000);
+    const onVisible = () => { if (!document.hidden) fetchFullState(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
   
   // Shuffled Collections States for random order every time
   const [shuffledSongs, setShuffledSongs] = useState<Song[]>([]);
