@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", "Alexandria", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", "Alexandria", serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-cream-50: #fdfbf7;
+  --color-cream-100: #fcf9f2;
+  --color-cream-200: #f5eedc;
+  --color-cream-300: #eadebe;
+  --color-cream-400: #dfcb9f;
+
+  /* "rose-gold" scale retinted to the New Dawn arcade palette (hot pink/magenta) */
+  --color-rose-gold-50: #fef1f6;
+  --color-rose-gold-100: #fde3ec;
+  --color-rose-gold-200: #fbc7da;
+  --color-rose-gold-300: #f79ebd;
+  --color-rose-gold-400: #f16aa0;
+  --color-rose-gold-500: #e83e86;
+  --color-rose-gold-600: #cc2570;
+  --color-rose-gold-700: #a81b5c;
+  --color-rose-gold-800: #841650;
+  --color-rose-gold-900: #611044;
+  --color-rose-gold-950: #3d0a2c;
+
+  /* New Dawn arcade accent colors: deep purple cabinet + cyan screen glow */
+  --color-arcade-purple-50: #f4f1fb;
+  --color-arcade-purple-100: #e6ddf5;
+  --color-arcade-purple-200: #c9b8e8;
+  --color-arcade-purple-300: #a488d6;
+  --color-arcade-purple-400: #7c5cc0;
+  --color-arcade-purple-500: #5a3fa0;
+  --color-arcade-purple-600: #452f80;
+  --color-arcade-purple-700: #362464;
+  --color-arcade-purple-800: #271a48;
+  --color-arcade-purple-900: #1a1130;
+  --color-arcade-purple-950: #100a1e;
+
+  --color-arcade-cyan-50: #eefdfd;
+  --color-arcade-cyan-100: #d3f9fa;
+  --color-arcade-cyan-200: #a8f1f4;
+  --color-arcade-cyan-300: #6ee7f0;
+  --color-arcade-cyan-400: #3ccddc;
+  --color-arcade-cyan-500: #22aebe;
+  --color-arcade-cyan-600: #1c8b9a;
+  --color-arcade-cyan-700: #1b6f7c;
+  --color-arcade-cyan-800: #1b5964;
+  --color-arcade-cyan-900: #1a4a54;
+  --color-arcade-cyan-950: #0a2b32;
+}
+
+@layer utilities {
+  .rtl {
+    direction: rtl;
+  }
+  .ltr {
+    direction: ltr;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(232, 62, 134, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 62, 134, 0.5);
+}
+
+/* Sleek Luxury Glassmorphism and Backdrop Blur */
+.glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.15);
+}
+
+.dark .glass {
+  background: rgba(23, 23, 23, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.5);
+}
+
+.glass-nav {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.dark .glass-nav {
+  background: rgba(20, 20, 20, 0.7);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Parallax zoom effect */
+.bg-zoom {
+  animation: slowZoom 40s infinite alternate ease-in-out;
+}
+
+@keyframes slowZoom {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); }
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
+}

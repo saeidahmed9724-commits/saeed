@@ -1,0 +1,6 @@
+{
+  "name": "Saeed & Sohila",
+  "description": "A premium private romantic website designed exclusively for Saeed and Sohila, with a luxury iOS-application-like experience.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
