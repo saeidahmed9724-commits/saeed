@@ -618,11 +618,28 @@ export default function App() {
   };
 
   // Poll server state for live notification feed
+  const liveStateEtagRef = useRef<string | null>(null);
   useEffect(() => {
     const fetchLiveState = async () => {
       try {
-        const res = await fetch('/api/interaction-state');
+        // Send back the ETag from the last successful poll. If nothing has
+        // changed server-side, the API responds with a tiny 304 (no body)
+        // instead of re-sending the entire shared state — this is what
+        // keeps repeated polling cheap on Fast Origin Transfer.
+        const res = await fetch('/api/interaction-state', {
+          headers: liveStateEtagRef.current
+            ? { 'If-None-Match': liveStateEtagRef.current }
+            : undefined
+        });
+
+        if (res.status === 304) {
+          // Nothing changed since the last poll — nothing to update.
+          return;
+        }
+
         if (res.ok) {
+          const etag = res.headers.get('ETag');
+          if (etag) liveStateEtagRef.current = etag;
           const data = await res.json();
           setLiveState(data);
           DataStore.syncFromRemote(data);

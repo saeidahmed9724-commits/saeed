@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import { createClient as createRedisClient } from 'redis';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -289,6 +290,23 @@ async function writeState(state: InteractionState) {
 
 // --- API ENDPOINTS & HELPERS ---
 
+// Maps an upload "category" to the InteractionState array it belongs to,
+// so upload responses can send back just the one array that changed
+// instead of re-transferring the entire shared state.
+const CATEGORY_STATE_KEY: Record<string, keyof InteractionState> = {
+  gallery: 'galleryItems',
+  song: 'songs',
+  video: 'videoItems',
+  memory: 'memories',
+  recording: 'voiceMessages'
+};
+
+function partialStateForCategory(activeState: InteractionState, category: string) {
+  const key = CATEGORY_STATE_KEY[category];
+  if (!key) return {};
+  return { [key]: (activeState as any)[key] };
+}
+
 function pushActivity(
   state: InteractionState,
   sender: 'Dodo' | 'SO',
@@ -316,9 +334,32 @@ function pushActivity(
 }
 
 // Get current live state
+//
+// This endpoint is polled continuously by the client (every few seconds) to
+// keep both partners' devices in sync. To avoid re-transferring the entire
+// (potentially large, ever-growing) state object from the origin on every
+// single poll, we compute an ETag for the serialized state and honor
+// conditional requests: if the client already has the current version
+// (If-None-Match matches), we respond with a tiny 304 Not Modified and no
+// body instead of re-sending the full JSON payload. This is the single
+// biggest source of Fast Origin Transfer for this app, since the vast
+// majority of polls happen while nothing has actually changed.
 app.get('/api/interaction-state', async (req, res) => {
   const activeState = await readState();
-  res.json(activeState);
+  const body = JSON.stringify(activeState);
+  const etag = '"' + crypto.createHash('sha1').update(body).digest('hex') + '"';
+
+  res.setHeader('ETag', etag);
+  res.setHeader('Cache-Control', 'private, no-cache, must-revalidate');
+
+  const clientEtag = req.headers['if-none-match'];
+  if (clientEtag && clientEtag === etag) {
+    res.status(304).end();
+    return;
+  }
+
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.status(200).send(body);
 });
 
 // Update shared database collection (Single Source of Truth)
@@ -345,7 +386,7 @@ app.post('/api/shared/update', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Direct Media & Memory Upload Endpoint (stores files in Supabase Storage)
@@ -495,7 +536,14 @@ app.post('/api/upload', async (req, res) => {
     );
 
     await writeState(activeState);
-    return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
+    // The client only needs the category array that actually changed
+    // (see DirectUploaderModal.tsx), not the entire shared state.
+    return res.json({
+      success: true,
+      items: createdItems,
+      item: createdItems[0],
+      state: partialStateForCategory(activeState, category)
+    });
   } catch (err: any) {
     console.error('Error during file upload:', err);
     return res.status(500).json({ error: 'Failed to save uploaded file(s)' });
@@ -652,7 +700,12 @@ app.post('/api/upload/complete', async (req, res) => {
     pushActivity(activeState, role || 'Dodo', 'buzz', actTitleAr, actTitleEn, actDescAr, actDescEn);
 
     await writeState(activeState);
-    return res.json({ success: true, items: createdItems, item: createdItems[0], state: activeState });
+    return res.json({
+      success: true,
+      items: createdItems,
+      item: createdItems[0],
+      state: partialStateForCategory(activeState, category)
+    });
   } catch (err: any) {
     console.error('Error completing upload:', err);
     return res.status(500).json({ error: 'Failed to save uploaded file metadata' });
@@ -673,7 +726,7 @@ app.post('/api/interaction-state/presence', async (req, res) => {
     activeState.soLastActive = nowStr;
   }
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Update current partner mood
@@ -706,7 +759,7 @@ app.post('/api/interaction-state/mood', async (req, res) => {
   );
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Send a love heartbeat buzz
@@ -751,7 +804,7 @@ app.post('/api/interaction-state/buzz', async (req, res) => {
   );
 
   await writeState(activeState);
-  res.json({ success: true, newBuzz, state: activeState });
+  res.json({ success: true, newBuzz });
 });
 
 // Acknowledge a buzz so it is cleared on receiver's end
@@ -764,7 +817,7 @@ app.post('/api/interaction-state/buzz/ack', async (req, res) => {
   const activeState = await readState();
   activeState.pendingBuzzes = activeState.pendingBuzzes.filter(b => b.id !== id);
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Add a sticky love note
@@ -803,7 +856,7 @@ app.post('/api/interaction-state/note', async (req, res) => {
   );
 
   await writeState(activeState);
-  res.json({ success: true, newNote, state: activeState });
+  res.json({ success: true, newNote });
 });
 
 // Delete a sticky love note
@@ -812,7 +865,7 @@ app.delete('/api/interaction-state/note/:id', async (req, res) => {
   const activeState = await readState();
   activeState.stickyNotes = activeState.stickyNotes.filter(n => n.id !== id);
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // Submit a quiz or question answer
@@ -865,7 +918,10 @@ app.post('/api/interaction-state/quiz-answer', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  // Only the loveQuizAnswers slice is consumed by the client here (see
+  // DailyQuestionSection.tsx) — send just that instead of the entire
+  // shared state (chat history, gallery, memories, etc.).
+  res.json({ success: true, state: { loveQuizAnswers: activeState.loveQuizAnswers } });
 });
 
 // Submit / update today's (or any date's) mood check-in
@@ -932,7 +988,7 @@ app.post('/api/interaction-state/daily-mood', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, dayEntry: activeState.dailyMoodEntries[date], state: activeState });
+  res.json({ success: true, dayEntry: activeState.dailyMoodEntries[date] });
 });
 
 // --- OUR ARCADE (Games section) ---
@@ -1062,7 +1118,7 @@ app.post('/api/games/session/update', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, session, match, state: activeState });
+  res.json({ success: true, session, match });
 });
 
 // Either partner can clear a stuck/abandoned session
@@ -1087,7 +1143,7 @@ app.post('/api/interaction-state/activity', async (req, res) => {
   const activeState = await readState();
   pushActivity(activeState, sender, type, titleAr, titleEn, descAr, descEn);
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 // --- PRIVATE CHAT SYSTEM ENDPOINTS ---
@@ -1151,7 +1207,7 @@ app.post('/api/chat/message', async (req, res) => {
 
   pushActivity(activeState, sender, 'chat', titleAr, titleEn, descAr, descEn);
   await writeState(activeState);
-  res.json({ success: true, newMessage, state: activeState });
+  res.json({ success: true, newMessage });
 });
 
 // Edit a chat message
@@ -1168,7 +1224,7 @@ app.put('/api/chat/message/:id', async (req, res) => {
     msg.text = text;
     msg.isEdited = true;
     await writeState(activeState);
-    return res.json({ success: true, message: msg, state: activeState });
+    return res.json({ success: true, message: msg });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1181,7 +1237,7 @@ app.delete('/api/chat/message/:id', async (req, res) => {
   activeState.chatMessages = activeState.chatMessages.filter(m => m.id !== id);
   if (activeState.chatMessages.length !== initialLength) {
     await writeState(activeState);
-    return res.json({ success: true, state: activeState });
+    return res.json({ success: true });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1204,7 +1260,7 @@ app.post('/api/chat/message/:id/react', async (req, res) => {
       msg.reactions[role] = emoji;
     }
     await writeState(activeState);
-    return res.json({ success: true, message: msg, state: activeState });
+    return res.json({ success: true, message: msg });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1224,7 +1280,7 @@ app.post('/api/chat/message/:id/pin', async (req, res) => {
     }
     msg.isPinned = isPinned;
     await writeState(activeState);
-    return res.json({ success: true, message: msg, state: activeState });
+    return res.json({ success: true, message: msg });
   }
   res.status(404).json({ error: 'Message not found' });
 });
@@ -1250,7 +1306,7 @@ app.post('/api/chat/status', async (req, res) => {
   }
 
   await writeState(activeState);
-  res.json({ success: true, state: activeState });
+  res.json({ success: true });
 });
 
 export default app;
