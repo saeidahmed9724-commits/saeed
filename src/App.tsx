@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Globe, Sun, Moon, Sparkles, Image as ImageIcon, MessageSquare, MessageCircle, Plus, User, HelpCircle, ArrowRight, Settings, X, Film, Music, Trophy, Maximize, Minimize, Upload, Trash2, Brain, Edit3 } from 'lucide-react';
+import { Heart, Globe, Sun, Moon, Sparkles, Image as ImageIcon, MessageCircle, Plus, User, HelpCircle, ArrowRight, Settings, X, Film, Music, Trophy, Maximize, Minimize, Upload, Trash2, Brain, Edit3 } from 'lucide-react';
 
 import { Language, Memory, GalleryItem, Profile, Song, VideoItem, UserRole } from './types';
 import { DataStore } from './dataStore';
@@ -24,7 +24,6 @@ import AdminPanel from './components/AdminPanel';
 import AchievementsSection from './components/AchievementsSection';
 import DirectUploaderModal from './components/DirectUploaderModal';
 import GalleryToMemoryModal from './components/GalleryToMemoryModal';
-import ChatSection from './components/ChatSection';
 import { KnowledgeBaseModal, getPartnerKnowledgeScores } from './components/KnowledgeBaseModal';
 
 // Shuffling helper function
@@ -102,7 +101,7 @@ export default function App() {
   const [lang, setLang] = useState<Language>(() => (localStorage.getItem('app_lang') as Language) || 'ar');
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [isAutoTheme, setIsAutoTheme] = useState(true);
-  const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile' | 'chat'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'memories' | 'reels' | 'gallery' | 'music' | 'profile'>('home');
   const [isLanding, setIsLanding] = useState(true);
   const [activeWidgetModal, setActiveWidgetModal] = useState<'envelope' | 'wheel' | 'stars' | 'question' | 'timeline' | 'achievements' | 'stats' | 'mood-tracker' | 'games' | 'player-card' | null>(null);
   const [anniversaryText, setAnniversaryText] = useState('');
@@ -130,6 +129,9 @@ export default function App() {
   
   // Real-time synchronization & notifications
   const [liveState, setLiveState] = useState<any>(null);
+  // Tracks the newest chat/game timestamp already received from
+  // /api/interaction-state/live, so each poll only asks for what's new.
+  const sinceRef = useRef<number>(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [notificationPerm, setNotificationPerm] = useState<string>(
     typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
@@ -634,9 +636,16 @@ export default function App() {
     const fetchLiveState = async () => {
       if (typeof document !== 'undefined' && document.hidden) return;
       try {
-        const res = await fetch('/api/interaction-state/live');
+        // `sinceRef` holds the newest game-match timestamp we've already
+        // received, so the backend only returns what changed since the
+        // last poll rather than re-sending everything every 6 seconds.
+        const res = await fetch(`/api/interaction-state/live?since=${sinceRef.current}`);
         if (res.ok) {
           const data = await res.json();
+          if (typeof data.serverTime === 'number') {
+            sinceRef.current = data.serverTime;
+          }
+
           setLiveState(data);
           
           if (data.activityFeed && data.activityFeed.length > 0) {
@@ -718,7 +727,16 @@ export default function App() {
     };
 
     fetchFullState();
-    const interval = setInterval(fetchFullState, 60000);
+    // Was 60000 (every minute) — this endpoint returns the full profiles,
+    // gallery, memories, videos, songs, etc. That data almost never
+    // changes minute-to-minute, so polling it that often just re-sends the
+    // same megabytes over and over. 5 minutes keeps it reasonably fresh
+    // while cutting this endpoint's contribution to Fast Origin Transfer
+    // by ~80%. Your own edits (e.g. DataStore.saveMemories) still apply
+    // locally right away — this poll is only for picking up your partner's
+    // changes from another device, which can now take up to 5 min instead
+    // of up to 1 min to show up.
+    const interval = setInterval(fetchFullState, 300000);
     const onVisible = () => { if (!document.hidden) fetchFullState(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
@@ -840,22 +858,10 @@ export default function App() {
     setContentTrigger((prev) => prev + 1);
   };
 
-  const handleShareFactToChat = async (text: string) => {
-    try {
-      await fetch('/api/chat/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender: currentUserRole,
-          text
-        })
-      });
-      onDataChanged();
-      setActiveTab('chat');
-      setIsKnowledgeBaseOpen(false);
-    } catch (err) {
-      console.error('Error sharing knowledge fact to chat:', err);
-    }
+  // Chat feature removed — this now just closes the knowledge base modal
+  // instead of posting the fact into a chat that no longer exists.
+  const handleShareFactToChat = async (_text: string) => {
+    setIsKnowledgeBaseOpen(false);
   };
 
   useEffect(() => {
@@ -1739,39 +1745,6 @@ export default function App() {
                                       >
                                         <Trash2 size={16} />
                                       </button>
-
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            await fetch('/api/chat/message', {
-                                              method: 'POST',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({
-                                                sender: currentUserRole,
-                                                text:
-                                                  lang === 'ar'
-                                                    ? `شاركت معك ذكرى: "${mem.title}"`
-                                                    : `Shared a memory: "${mem.title}"`,
-                                                sharedItem: {
-                                                  type: 'memory',
-                                                  id: mem.id,
-                                                  title: mem.title,
-                                                  subtitle: mem.date,
-                                                  image: mem.imageUrl
-                                                }
-                                              })
-                                            });
-                                            onDataChanged();
-                                            setActiveTab('chat');
-                                          } catch (err) {
-                                            console.error('Error sharing memory:', err);
-                                          }
-                                        }}
-                                        className="text-xs font-bold text-rose-gold-600 dark:text-rose-gold-400 hover:text-rose-gold-700 bg-rose-gold-500/10 hover:bg-rose-gold-500/20 px-4 py-2 rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                                      >
-                                        <span>💬</span>
-                                        <span>{lang === 'ar' ? 'مشاركة في المحادثة' : 'Share in Chat'}</span>
-                                      </button>
                                     </div>
                                   </div>
                                 </div>
@@ -2173,26 +2146,6 @@ export default function App() {
               </div>
             )}
 
-            {/* --- CHAT TAB --- */}
-            {activeTab === 'chat' && (
-              <div className="animate-fade-in py-1">
-                <ChatSection
-                  lang={lang}
-                  currentUserRole={currentUserRole}
-                  liveState={liveState}
-                  onDataChanged={onDataChanged}
-                  setActiveTab={setActiveTab}
-                  setActiveWidgetModal={setActiveWidgetModal}
-                  setSelectedEnvelopeId={setSelectedEnvelopeId}
-                  setSelectedQuestionId={setSelectedQuestionId}
-                  setSelectedWheelItemName={setSelectedWheelItemName}
-                  setSelectedAchievementId={setSelectedAchievementId}
-                  setCurrentSong={setCurrentSong}
-                  setIsPlaying={setIsPlaying}
-                />
-              </div>
-            )}
-
             </div>
 
             {/* --- WIDGET MODALS --- */}
@@ -2318,20 +2271,6 @@ export default function App() {
                 >
                   <Globe size={21} />
                   <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.home}</span>
-                </button>
-
-                {/* Chat */}
-                <button
-                  onClick={() => setActiveTab('chat')}
-                  className={`flex flex-col items-center gap-0.5 flex-1 min-w-[48px] py-1.5 rounded-2xl transition-all cursor-pointer relative ${
-                    activeTab === 'chat' ? 'text-rose-gold-600 dark:text-rose-gold-300 bg-rose-gold-50 dark:bg-rose-gold-950/50 font-bold' : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600'
-                  }`}
-                >
-                  <MessageSquare size={21} />
-                  <span className="text-[10px] font-bold tracking-tight whitespace-nowrap">{t.chat || (lang === 'ar' ? 'الشات' : 'Chat')}</span>
-                  {liveState?.chatMessages?.length > 0 && activeTab !== 'chat' && (
-                    <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-rose-gold-500 animate-ping" />
-                  )}
                 </button>
 
                 {/* Memories */}

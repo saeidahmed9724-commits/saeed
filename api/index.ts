@@ -317,8 +317,13 @@ function pushActivity(
 
 // Get current live state
 app.get('/api/interaction-state', async (req, res) => {
-  const activeState = await readState();
-  res.json(activeState);
+  const activeState: any = await readState();
+  // Chat feature was removed from the frontend, so there's no reason to
+  // keep shipping the (potentially huge, up-to-100,000-message) chat
+  // history in this response — it was previously sent in full on every
+  // sync of this endpoint.
+  const { chatMessages, ...stateWithoutChat } = activeState;
+  res.json(stateWithoutChat);
 });
 
 // Lightweight version of the above — only the fields that genuinely change
@@ -331,17 +336,9 @@ app.get('/api/interaction-state', async (req, res) => {
 app.get('/api/interaction-state/live', async (req, res) => {
   const activeState: any = await readState();
 
-  // `since` = the timestamp (ms) of the newest chat message / game match the
-  // client already has locally. Only items newer than that are sent back.
-  // This is what actually keeps this endpoint's payload small on repeated
-  // polls — sending the full history back every time is what caused the
-  // Fast Origin Transfer spike, regardless of which other fields were
-  // trimmed out.
+  // `since` = the timestamp (ms) of the newest game match the client
+  // already has locally. Only items newer than that are sent back.
   const since = Number(req.query.since) || 0;
-
-  const chatMessages = since > 0
-    ? (activeState.chatMessages || []).filter((m: any) => m.timestamp > since)
-    : activeState.chatMessages;
 
   const gameMatches = since > 0
     ? (activeState.gameMatches || []).filter((m: any) => m.updatedAt ? m.updatedAt > since : true)
@@ -357,7 +354,9 @@ app.get('/api/interaction-state/live', async (req, res) => {
     pendingBuzzes: activeState.pendingBuzzes,
     stickyNotes: activeState.stickyNotes,
     activityFeed: activeState.activityFeed,
-    chatMessages,
+    // chatMessages removed from this response — the chat feature was
+    // removed from the frontend, so there's no reason to keep sending
+    // (and growing) that array on every 6-second poll.
     loveQuizAnswers: activeState.loveQuizAnswers,
     dailyMoodEntries: activeState.dailyMoodEntries,
     gameMatches,
